@@ -4,13 +4,19 @@ import bpy
 import pathlib
 import os
 import struct
+import sys
 
 
-
-from Header import Header
-from DataTable import DataTable, DataTableEntry
-from StringTable import StringTable
-from ContentTable import ContentTable, ContentTableEntry
+if 'DEBUG_MODE' in sys.argv:
+    from Header import Header
+    from DataTable import DataTable, DataTableEntry
+    from StringTable import StringTable
+    from ContentTable import ContentTable, ContentTableEntry    
+else:
+    from . Header import Header
+    from . DataTable import DataTable, DataTableEntry
+    from . StringTable import StringTable
+    from . ContentTable import ContentTable, ContentTableEntry
 
 
 

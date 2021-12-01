@@ -7,7 +7,12 @@ bl_info = {
 }
 modulesNames = ["Header", "DataTable", "StringTable", "ContentTable", "renderModel"]
 
-import renderModel
+import sys
+
+if 'DEBUG_MODE' in sys.argv:
+    import renderModel
+else:
+    from . import renderModel
 
 def register():
     renderModel.register()
