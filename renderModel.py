@@ -352,7 +352,7 @@ class ImportRenderModel(bpy.types.Operator):
                                 materials.append(Material())
                         if not materials[part.material_index].read_data and self.auto_import_dependencies:
                             #print(f"Reading material {part.material_path}")
-                            materials[part.material_index].readMaterial(self.root_folder + "/" + part.material_path.replace("\\","/").replace("//","/") + ".material")
+                            materials[part.material_index].readMaterial(self.root_folder + "/" + part.material_path.replace("\\","/").replace("//","/") + ".material",self.root_folder)
                         nVerts += part.vertex_count
                         source_mesh.parts.append(part)
                         #print(f"Part has {hex(part.vertex_count)} vertices and uses material {hex(part.material_index)}")
