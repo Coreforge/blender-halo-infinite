@@ -101,6 +101,12 @@ class Scale:
     z_min = -1
     z_max = -1
     model_scale = [[],[],[]]
+
+    u0_min = -1
+    u0_max = -1
+    v0_min = -1
+    v0_max = -1
+    uv0_scale = [[],[]]
     def __init__(self):
         self.x_min = -1
         self.x_max = -1
@@ -203,8 +209,8 @@ class ImportRenderModel(bpy.types.Operator):
                     for j in range(src_mesh.vertex_blocks[idx].offset,src_mesh.vertex_blocks[idx].offset + src_mesh.vertex_blocks[idx].size,src_mesh.vertex_blocks[idx].vertex_stride):
                         chunk_offset = j
 
-                        u = int.from_bytes(chunk_data[chunk_offset:chunk_offset+2],'little') / (2 ** 16 - 1) #* scale.model_scale[0][-1] + scale.model_scale[0][0]
-                        v = int.from_bytes(chunk_data[chunk_offset+2:chunk_offset+4],'little') / (2 ** 16 - 1)# * scale.model_scale[1][-1] + scale.model_scale[1][0]
+                        u = int.from_bytes(chunk_data[chunk_offset:chunk_offset+2],'little') / (2 ** 16 - 1) * scale.uv0_scale[0][-1] + scale.uv0_scale[0][0]
+                        v = int.from_bytes(chunk_data[chunk_offset+2:chunk_offset+4],'little') / (2 ** 16 - 1) * scale.uv0_scale[1][-1] + scale.uv0_scale[1][0]
                         uv0.append([u,v])
                         #print(f"UV0: {u} {v}")
 
@@ -323,7 +329,11 @@ class ImportRenderModel(bpy.types.Operator):
                     scale.z_min = struct.unpack('f',f.read(4))[0]
                     scale.z_max = struct.unpack('f',f.read(4))[0]
                     scale.model_scale = [[scale.x_min, scale.x_max, scale.x_max-scale.x_min], [scale.y_min, scale.y_max, scale.y_max-scale.y_min], [scale.z_min, scale.z_max, scale.z_max-scale.z_min]]
-
+                    scale.u0_min = struct.unpack('f',f.read(4))[0]
+                    scale.u0_max = struct.unpack('f',f.read(4))[0]
+                    scale.v0_min = struct.unpack('f',f.read(4))[0]
+                    scale.v0_max = struct.unpack('f',f.read(4))[0]
+                    scale.uv0_scale = [[scale.u0_min,scale.u0_max,scale.u0_max-scale.u0_min],[scale.v0_min,scale.v0_max,scale.v0_max-scale.v0_min]]
 
                 # Mesh data Block
                 if content_table.entries[x].hash == b"\x9D\x84\x81\x4A\xB4\x42\xEE\xFB\xAC\x56\xC9\xA3\x18\x0F\x53\xE6":
