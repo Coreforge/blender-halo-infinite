@@ -350,7 +350,7 @@ class ImportRenderModel(bpy.types.Operator):
                         if len(materials)-1 < part.material_index:
                             for additional_entries in range(part.material_index + 1 - len(materials)):
                                 materials.append(Material())
-                        if not materials[part.material_index].read_data:
+                        if not materials[part.material_index].read_data and self.auto_import_dependencies:
                             #print(f"Reading material {part.material_path}")
                             materials[part.material_index].readMaterial(self.root_folder + "/" + part.material_path.replace("\\","/").replace("//","/") + ".material")
                         nVerts += part.vertex_count
