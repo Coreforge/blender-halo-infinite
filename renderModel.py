@@ -11,12 +11,14 @@ if 'DEBUG_MODE' in sys.argv:
     from Header import Header
     from DataTable import DataTable, DataTableEntry
     from StringTable import StringTable
-    from ContentTable import ContentTable, ContentTableEntry    
+    from ContentTable import ContentTable, ContentTableEntry 
+    from Material import Material   
 else:
     from . Header import Header
     from . DataTable import DataTable, DataTableEntry
     from . StringTable import StringTable
     from . ContentTable import ContentTable, ContentTableEntry
+    from . Material import Material
 
 
 
@@ -129,6 +131,19 @@ class ImportRenderModel(bpy.types.Operator):
 
     filepath: bpy.props.StringProperty(subtype="FILE_PATH")
 
+    auto_import_dependencies: bpy.props.BoolProperty(
+        name="Import dependencies",
+        description="Automatically import data like Textures from the specified root path",
+        default=False
+    )
+
+    root_folder: bpy.props.StringProperty(
+        subtype="FILE_PATH",
+        name="Asset Root",
+        description="Path to use for additional data. Uses relative path from imported file if none is specified and import dependencies is active",
+        default="/home/ich/haloRIP/HIMU/output"
+    )
+
     lod: bpy.props.IntProperty(
         name="LOD",
         description="The LOD of the meshes to import. Meshes with a different LOD get ignored",
@@ -149,15 +164,18 @@ class ImportRenderModel(bpy.types.Operator):
             bpy.context.view_layer.active_layer_collection.collection.objects.link(object)
             vert_count = 0
 
+            uv0 = []
+            uv1 = []
+
             # add all the vertices
-            for x in range(len(src_mesh.vertex_blocks)):
-                if src_mesh.vertex_blocks[x].vertex_type == 0:
-                    if src_mesh.vertex_blocks[x].size > 0x100000:
-                        return
+            for idx in range(len(src_mesh.vertex_blocks)):
+
+                # Position data
+                if src_mesh.vertex_blocks[idx].vertex_type == 0:
                     #print(f"Block Size: {hex(src_mesh.vertex_blocks[x].size)} stride: {hex(src_mesh.vertex_blocks[x].vertex_stride)}")
-                    if src_mesh.vertex_blocks[x].vertex_stride == 0 or src_mesh.vertex_blocks[x].size == 0:
+                    if src_mesh.vertex_blocks[idx].vertex_stride == 0 or src_mesh.vertex_blocks[idx].size == 0:
                         continue
-                    for j in range(src_mesh.vertex_blocks[x].offset,src_mesh.vertex_blocks[x].offset + src_mesh.vertex_blocks[x].size,src_mesh.vertex_blocks[x].vertex_stride):
+                    for j in range(src_mesh.vertex_blocks[idx].offset,src_mesh.vertex_blocks[idx].offset + src_mesh.vertex_blocks[idx].size,src_mesh.vertex_blocks[idx].vertex_stride):
                         #f.seek(vertex_blocks[x].offset + j * vertex_blocks[x].vertex_stride)
                         #chunk_offset = vertex_blocks[x].offset + j * vertex_blocks[x].vertex_stride
                         chunk_offset = j
@@ -178,6 +196,31 @@ class ImportRenderModel(bpy.types.Operator):
                         mesh.vertices[-1].co = (x,y,z)
                         vert_count += 1
 
+                # UV
+                if src_mesh.vertex_blocks[idx].vertex_type == 1:
+                    #nVerts = (int)(src_mesh.vertex_blocks[x].size / src_mesh.vertex_blocks[x].vertex_stride)
+                    current_vert = 0
+                    for j in range(src_mesh.vertex_blocks[idx].offset,src_mesh.vertex_blocks[idx].offset + src_mesh.vertex_blocks[idx].size,src_mesh.vertex_blocks[idx].vertex_stride):
+                        chunk_offset = j
+
+                        u = int.from_bytes(chunk_data[chunk_offset:chunk_offset+2],'little') / (2 ** 16 - 1) #* scale.model_scale[0][-1] + scale.model_scale[0][0]
+                        v = int.from_bytes(chunk_data[chunk_offset+2:chunk_offset+4],'little') / (2 ** 16 - 1)# * scale.model_scale[1][-1] + scale.model_scale[1][0]
+                        uv0.append([u,v])
+                        #print(f"UV0: {u} {v}")
+
+                if src_mesh.vertex_blocks[idx].vertex_type == 2:
+                    #nVerts = (int)(src_mesh.vertex_blocks[x].size / src_mesh.vertex_blocks[x].vertex_stride)
+                    current_vert = 0
+                    for j in range(src_mesh.vertex_blocks[idx].offset,src_mesh.vertex_blocks[idx].offset + src_mesh.vertex_blocks[idx].size,src_mesh.vertex_blocks[idx].vertex_stride):
+                        chunk_offset = j
+
+                        u = int.from_bytes(chunk_data[chunk_offset:chunk_offset+2],'little') / (2 ** 16 - 1) #* scale.model_scale[0][-1] + scale.model_scale[0][0]
+                        v = int.from_bytes(chunk_data[chunk_offset+2:chunk_offset+4],'little') / (2 ** 16 - 1)# * scale.model_scale[1][-1] + scale.model_scale[1][0]
+                        uv1.append([u,v])
+                        #print(f"UV1: {u} {v}")
+
+            print(f"UV0 len: {len(uv0[0])}")
+            print(f"UV1 len: {len(uv1)}")
             # combine the vertices into faces
             if vert_count >= 0x10000:
                 index_len = 4
@@ -204,6 +247,16 @@ class ImportRenderModel(bpy.types.Operator):
                     bm.free()  
                     print("Error creating face")      
                     return
+
+            bm.verts.ensure_lookup_table()
+            bm.verts.index_update()
+            bm.faces.ensure_lookup_table()
+            uv = bm.loops.layers.uv.new()
+            for face in range(len(bm.faces)):
+                for vLoop in range(len(bm.faces[face].loops)):
+                    loop = bm.faces[face].loops[vLoop]
+                    #print(f"{loop.vert.index} {uv0}")
+                    loop[uv].uv = (uv0[loop.vert.index][0],uv0[loop.vert.index][1])
                     
             bm.to_mesh(mesh)
             bm.free()
@@ -232,7 +285,7 @@ class ImportRenderModel(bpy.types.Operator):
             data_offset = None
 
             mesh_blocks = []
-
+            materials = []
 
 
             file_header = Header()
@@ -293,6 +346,13 @@ class ImportRenderModel(bpy.types.Operator):
                         part.vertex_count = int.from_bytes(f.read(2),'little')
                         #print(part.material_index)
                         part.material_path = string_table.strings[part.material_index]
+                        #print(f"Using material: {part.material_path}")
+                        if len(materials)-1 < part.material_index:
+                            for additional_entries in range(part.material_index + 1 - len(materials)):
+                                materials.append(Material())
+                        if not materials[part.material_index].read_data:
+                            #print(f"Reading material {part.material_path}")
+                            materials[part.material_index].readMaterial(self.root_folder + "/" + part.material_path.replace("\\","/").replace("//","/") + ".material")
                         nVerts += part.vertex_count
                         source_mesh.parts.append(part)
                         #print(f"Part has {hex(part.vertex_count)} vertices and uses material {hex(part.material_index)}")

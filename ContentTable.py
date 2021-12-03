@@ -2,12 +2,14 @@ class ContentTableEntry:
     hash = None
     data_reference = None
     data_parent = None
+    offset = None
     def __init__(self) -> None:
         pass
 
 class ContentTable:
     entries = []
     def __init__(self) -> None:
+        self.entries = []
         pass
 
     def readTable(self,f,header,data_table):
@@ -23,4 +25,5 @@ class ContentTable:
             parent_index = int.from_bytes(f.read(4),'little')
             if parent_index < header.data_table_count:
                 entry.data_parent = data_table.entries[parent_index]
+            entry.offset = offset
             self.entries.append(entry)

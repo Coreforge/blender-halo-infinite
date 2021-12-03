@@ -1,6 +1,7 @@
 class StringTable:
     strings = []
     def __init__(self):
+        self.strings = []
         pass
 
     def readNullString(self, f, start):
@@ -21,6 +22,6 @@ class StringTable:
             string = self.readNullString(f,offset + (header.string_count-x)*0x10 + string_offset)
             if string_index < header.string_count:
                 self.strings.append(string)
-                print(f"Added String {x}: {string}")
+                #print(f"Added String {string_index}: {string}")
             else:
                 print(f"String {string} has no valid index and will be ignored")
