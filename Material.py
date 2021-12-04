@@ -28,7 +28,7 @@ class Material:
         self.read_data = False
         pass
 
-    def readMaterial(self,path,root):
+    def readMaterial(self,path,root,import_settings):
         with open(path,'rb') as fmat:
             #print(path)
             if not self.file_header.checkMagic(fmat):
@@ -60,19 +60,19 @@ class Material:
                         if id == 0xe5562d34:
                             print(f"Normal map: {self.string_table.strings[idx]}")
                             tex = Texture()
-                            tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", path.split("/")[-1]+"normal")
+                            tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", path.split("/")[-1]+".normal",import_settings)
                         if id == 0x1a319e59:
                             print(f"ASG Control map: {self.string_table.strings[idx]}")
                             tex = Texture()
-                            tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", path.split("/")[-1]+"asg")
+                            tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", path.split("/")[-1]+".asg",import_settings)
                         if id == 0x9c06e777:
                             print(f"Mask 0 Control map: {self.string_table.strings[idx]}")
                             tex = Texture()
-                            tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", path.split("/")[-1]+"mask_0")
+                            tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", path.split("/")[-1]+".mask_0",import_settings)
                         if id == 0x7fb4ec19:
                             print(f"Mask 1 Control map: {self.string_table.strings[idx]}")
                             tex = Texture()
-                            tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", path.split("/")[-1]+"mask_1")
+                            tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", path.split("/")[-1]+".mask_1",import_settings)
                             
                 
                 #print(f"Content Table: offset {hex(self.material_content_table.entries[x].data_reference.offset)} size {hex(self.material_content_table.entries[x].data_reference.size)} hash {self.material_content_table.entries[x].hash}")

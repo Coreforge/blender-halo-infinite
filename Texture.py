@@ -295,7 +295,7 @@ class Texture:
         #write_file(dds_header, tex, full_save_path)
 
 
-    def readTexture(self,path,name):
+    def readTexture(self,path,name, import_settings):
         import texture2ddecoder
         with open(path,'rb') as f:
             if not self.file_header.checkMagic(f):
@@ -331,6 +331,10 @@ class Texture:
                         nResourceFiles = content_entry.data_reference.size//0x10    # there are 0x10 bytes for each file
                         for chunk in range(nResourceFiles):
                             offset = content_entry.data_reference.offset + chunk * 0x10
+                            f.seek(offset + 0xa)
+                            mipmap = int.from_bytes(f.read(1),'little')
+                            if mipmap != import_settings.mipmap:
+                                continue
                             f.seek(offset + 0xc)
                             width = int.from_bytes(f.read(2),'little')
                             height = int.from_bytes(f.read(2),'little')

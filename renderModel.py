@@ -121,6 +121,13 @@ class ScaleModifier:
         self.y = 1.0
         self.z = 1.0
 
+class ImportSettings:
+    lod = -1
+    mipmap = -1
+    def __init__(self):
+        self.lod = -1
+        self.mipmap = -1
+
 def readNullString(f, start):
     string = []
     f.seek(start)
@@ -148,6 +155,12 @@ class ImportRenderModel(bpy.types.Operator):
         name="Asset Root",
         description="Path to use for additional data. Uses relative path from imported file if none is specified and import dependencies is active",
         default="/home/ich/haloRIP/HIMU/output"
+    )
+
+    mipmap: bpy.props.IntProperty(
+        name="Mipmap level",
+        description="Mipmap level of the textures to import.",
+        default=0
     )
 
     lod: bpy.props.IntProperty(
@@ -307,7 +320,9 @@ class ImportRenderModel(bpy.types.Operator):
             string_table.readStrings(f,file_header)
             content_table.readTable(f,file_header,data_entry_table)
 
-            
+            import_settings = ImportSettings()
+            import_settings.mipmap = self.mipmap
+            import_settings.lod = self.lod
 
 
             # process content Table to populate the different Arrays for later use
@@ -362,7 +377,7 @@ class ImportRenderModel(bpy.types.Operator):
                                 materials.append(Material())
                         if not materials[part.material_index].read_data and self.auto_import_dependencies:
                             #print(f"Reading material {part.material_path}")
-                            materials[part.material_index].readMaterial(self.root_folder + "/" + part.material_path.replace("\\","/").replace("//","/") + ".material",self.root_folder)
+                            materials[part.material_index].readMaterial(self.root_folder + "/" + part.material_path.replace("\\","/").replace("//","/") + ".material",self.root_folder,import_settings)
                         nVerts += part.vertex_count
                         source_mesh.parts.append(part)
                         #print(f"Part has {hex(part.vertex_count)} vertices and uses material {hex(part.material_index)}")
@@ -542,7 +557,7 @@ class ImportRenderModel(bpy.types.Operator):
                     print("Mesh block doesn't have a mesh part assigned, weird. skipping!")
                     continue
                 
-                if mesh_part.lod != self.lod:
+                if mesh_part.lod != import_settings.lod:
                     #print("LOD doesn't match, ignoring Mesh")
                     continue
 
