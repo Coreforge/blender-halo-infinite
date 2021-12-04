@@ -107,6 +107,12 @@ class Scale:
     v0_min = -1
     v0_max = -1
     uv0_scale = [[],[]]
+
+    u1_min = -1
+    u1_max = -1
+    v1_min = -1
+    v1_max = -1
+    uv1_scale = [[],[]]
     def __init__(self):
         self.x_min = -1
         self.x_max = -1
@@ -150,6 +156,12 @@ class ImportRenderModel(bpy.types.Operator):
         default=False
     )
 
+    import_uvs: bpy.props.BoolProperty(
+        name="Import UVs",
+        description="import UV data. Takes some additional time",
+        default=True
+    )
+
     root_folder: bpy.props.StringProperty(
         subtype="FILE_PATH",
         name="Asset Root",
@@ -186,56 +198,82 @@ class ImportRenderModel(bpy.types.Operator):
             uv0 = []
             uv1 = []
 
-            # add all the vertices
-            for idx in range(len(src_mesh.vertex_blocks)):
+            frombytes = int.from_bytes
+            model_scale = scale.model_scale
+            uv0_scale = scale.uv0_scale
+            uv1_scale = scale.uv1_scale
 
+            modX = scaleModifier.x
+            modY = scaleModifier.y
+            modZ = scaleModifier.z
+
+            blocks = src_mesh.vertex_blocks
+
+            vert_arr = []
+
+
+            print("importing mesh")
+            # add all the vertices
+            for idx in range(len(blocks)):
+                block = blocks[idx]
                 # Position data
-                if src_mesh.vertex_blocks[idx].vertex_type == 0:
+                if block.vertex_type == 0:
                     #print(f"Block Size: {hex(src_mesh.vertex_blocks[x].size)} stride: {hex(src_mesh.vertex_blocks[x].vertex_stride)}")
-                    if src_mesh.vertex_blocks[idx].vertex_stride == 0 or src_mesh.vertex_blocks[idx].size == 0:
+                    if block.vertex_stride == 0 or block.size == 0:
                         continue
-                    for j in range(src_mesh.vertex_blocks[idx].offset,src_mesh.vertex_blocks[idx].offset + src_mesh.vertex_blocks[idx].size,src_mesh.vertex_blocks[idx].vertex_stride):
+                    nVerts = block.size//block.vertex_stride
+                    print(f"Adding {nVerts} vertices")
+                    #mesh.vertices.add(nVerts)
+                    vert_arr.extend((0.0,)*nVerts)
+                    for j in range(block.offset,block.offset + block.size,block.vertex_stride):
                         #f.seek(vertex_blocks[x].offset + j * vertex_blocks[x].vertex_stride)
                         #chunk_offset = vertex_blocks[x].offset + j * vertex_blocks[x].vertex_stride
                         chunk_offset = j
-                        x = int.from_bytes(chunk_data[chunk_offset:chunk_offset+2],'little') / (2 ** 16 - 1) * scale.model_scale[0][-1] + scale.model_scale[0][0]
-                        y = int.from_bytes(chunk_data[chunk_offset+2:chunk_offset+4],'little') / (2 ** 16 - 1) * scale.model_scale[1][-1] + scale.model_scale[1][0]
-                        z = int.from_bytes(chunk_data[chunk_offset+4:chunk_offset+6],'little') / (2 ** 16 - 1) * scale.model_scale[2][-1] + scale.model_scale[2][0]
-
+                        
+                        x = frombytes(chunk_data[chunk_offset:chunk_offset+2],'little') / (2 ** 16 - 1) * model_scale[0][-1] + model_scale[0][0]
+                        y = frombytes(chunk_data[chunk_offset+2:chunk_offset+4],'little') / (2 ** 16 - 1) * model_scale[1][-1] + model_scale[1][0]
+                        z = frombytes(chunk_data[chunk_offset+4:chunk_offset+6],'little') / (2 ** 16 - 1) * model_scale[2][-1] + model_scale[2][0]
                         # apply scale modifier
-                        x *= scaleModifier.x
-                        y *= scaleModifier.y
-                        z *= scaleModifier.z
+                        x *= modX
+                        y *= modY
+                        z *= modZ
 
                         #x += scale.model_scale[0][0]
                         #y += scale.model_scale[1][0]
                         #z += scale.model_scale[2][0]
 
-                        mesh.vertices.add(1)
-                        mesh.vertices[-1].co = (x,y,z)
+                        #mesh.vertices.add(1)
+                        #mesh.vertices[vert_count].co = (x,y,z)
+                        vert_arr[vert_count] = (x,y,z)
                         vert_count += 1
 
                 # UV
-                if src_mesh.vertex_blocks[idx].vertex_type == 1:
+                if block.vertex_type == 1:
                     #nVerts = (int)(src_mesh.vertex_blocks[x].size / src_mesh.vertex_blocks[x].vertex_stride)
-                    current_vert = 0
-                    for j in range(src_mesh.vertex_blocks[idx].offset,src_mesh.vertex_blocks[idx].offset + src_mesh.vertex_blocks[idx].size,src_mesh.vertex_blocks[idx].vertex_stride):
+                    current_vert = len(uv0)
+                    uv0.extend([0.0,]*((block.size//block.vertex_stride)))
+                    for j in range(block.offset,block.offset + block.size,block.vertex_stride):
                         chunk_offset = j
-
-                        u = int.from_bytes(chunk_data[chunk_offset:chunk_offset+2],'little') / (2 ** 16 - 1) * scale.uv0_scale[0][-1] + scale.uv0_scale[0][0]
-                        v = int.from_bytes(chunk_data[chunk_offset+2:chunk_offset+4],'little') / (2 ** 16 - 1) * scale.uv0_scale[1][-1] + scale.uv0_scale[1][0]
-                        uv0.append([u,v])
+                        #print(f"Vertex UV0 block at {hex(chunk_offset)} stride: {hex(block.vertex_stride)}")
+                        u = frombytes(chunk_data[chunk_offset:chunk_offset+2],'little') / (2 ** 16 - 1) * uv0_scale[0][-1] + uv0_scale[0][0]
+                        v = frombytes(chunk_data[chunk_offset+2:chunk_offset+4],'little') / (2 ** 16 - 1) * uv0_scale[1][-1] + uv0_scale[1][0]
+                        #uv0.append([u,v])
+                        uv0[current_vert] = (u,v)
+                        current_vert += 1
                         #print(f"UV0: {u} {v}")
 
                 if src_mesh.vertex_blocks[idx].vertex_type == 2:
                     #nVerts = (int)(src_mesh.vertex_blocks[x].size / src_mesh.vertex_blocks[x].vertex_stride)
-                    current_vert = 0
-                    for j in range(src_mesh.vertex_blocks[idx].offset,src_mesh.vertex_blocks[idx].offset + src_mesh.vertex_blocks[idx].size,src_mesh.vertex_blocks[idx].vertex_stride):
+                    current_vert = len(uv1)
+                    uv1.extend([0.0,]*((block.size//block.vertex_stride)))
+                    for j in range(block.offset,block.offset + block.size,block.vertex_stride):
                         chunk_offset = j
 
-                        u = int.from_bytes(chunk_data[chunk_offset:chunk_offset+2],'little') / (2 ** 16 - 1) #* scale.model_scale[0][-1] + scale.model_scale[0][0]
-                        v = int.from_bytes(chunk_data[chunk_offset+2:chunk_offset+4],'little') / (2 ** 16 - 1)# * scale.model_scale[1][-1] + scale.model_scale[1][0]
-                        uv1.append([u,v])
+                        u = frombytes(chunk_data[chunk_offset:chunk_offset+2],'little') / (2 ** 16 - 1) * uv1_scale[0][-1] + uv1_scale[0][0]
+                        v = frombytes(chunk_data[chunk_offset+2:chunk_offset+4],'little') / (2 ** 16 - 1) * uv1_scale[1][-1] + uv1_scale[1][0]
+                        #uv1.append([u,v])
+                        uv1[current_vert] = [u,v]
+                        current_vert += 1
                         #print(f"UV1: {u} {v}")
 
             print(f"UV0 len: {len(uv0[0])}")
@@ -248,37 +286,41 @@ class ImportRenderModel(bpy.types.Operator):
             #print(f"Mesh has {hex(vert_count)} vertices")
             if vert_count == 0:
                 return
-            bm = bmesh.new()
-            bm.from_mesh(mesh)
+            edges = []
+            faces = {}
+            nFace = 0
+            #faces.extend((0.0,)*(src_mesh.index_block.size//(index_len*3)))
             for face_start in range(src_mesh.index_block.offset, src_mesh.index_block.offset + src_mesh.index_block.size, index_len*3):
                 # read 3 16-bit integers that correspond to the vertex ids of the vertices of the face
-                bm.verts.ensure_lookup_table()
-                index_1 = int.from_bytes(chunk_data[face_start:face_start+index_len],'little')
-                index_2 = int.from_bytes(chunk_data[face_start+index_len:face_start+index_len*2],'little')
-                index_3 = int.from_bytes(chunk_data[face_start+index_len*2:face_start+index_len*3],'little')
-                if index_1 > len(bm.verts) or index_2 > len(bm.verts) or index_3 > len(bm.verts):
-                    continue
-                bm.faces.ensure_lookup_table()
-                try:
-                    bm.faces.new([bm.verts[index_1],bm.verts[index_2],bm.verts[index_3]])
-                except:
-                    bm.to_mesh(mesh)
-                    bm.free()  
-                    print("Error creating face")      
-                    return
+                
+                index_1 = frombytes(chunk_data[face_start:face_start+index_len],'little')
+                index_2 = frombytes(chunk_data[face_start+index_len:face_start+index_len*2],'little')
+                index_3 = frombytes(chunk_data[face_start+index_len*2:face_start+index_len*3],'little')
 
-            bm.verts.ensure_lookup_table()
-            bm.verts.index_update()
-            bm.faces.ensure_lookup_table()
-            uv = bm.loops.layers.uv.new()
-            for face in range(len(bm.faces)):
-                for vLoop in range(len(bm.faces[face].loops)):
-                    loop = bm.faces[face].loops[vLoop]
-                    #print(f"{loop.vert.index} {uv0}")
-                    loop[uv].uv = (uv0[loop.vert.index][0],uv0[loop.vert.index][1])
+                faces[nFace] = (index_1,index_2,index_3)
+                nFace += 1
+
+
+            print("faces done")
+            mesh.from_pydata(vert_arr,edges,list(faces.values()))
+            #mesh.validate()
+            #mesh.update()
+            if self.import_uvs:
+                uv_layer = mesh.uv_layers.new(name="UV0")
+                for loop in range(len(mesh.loops)):
+                    try:
+                        uv_layer.data[mesh.loops[loop].index].uv = (uv0[mesh.loops[loop].vertex_index][0],uv0[mesh.loops[loop].vertex_index][1])
+                    except:
+                        break
                     
-            bm.to_mesh(mesh)
-            bm.free()
+                uv_layer = mesh.uv_layers.new(name="UV1")
+                for loop in range(len(mesh.loops)):
+                    try:
+                        uv_layer.data[mesh.loops[loop].index].uv = (uv1[mesh.loops[loop].vertex_index][0],uv1[mesh.loops[loop].vertex_index][1])
+                    except:
+                        break
+
+            print("UV done")
             return
 
         def openRenderModel(f):
@@ -349,6 +391,11 @@ class ImportRenderModel(bpy.types.Operator):
                     scale.v0_min = struct.unpack('f',f.read(4))[0]
                     scale.v0_max = struct.unpack('f',f.read(4))[0]
                     scale.uv0_scale = [[scale.u0_min,scale.u0_max,scale.u0_max-scale.u0_min],[scale.v0_min,scale.v0_max,scale.v0_max-scale.v0_min]]
+                    scale.u1_min = struct.unpack('f',f.read(4))[0]
+                    scale.u1_max = struct.unpack('f',f.read(4))[0]
+                    scale.v1_min = struct.unpack('f',f.read(4))[0]
+                    scale.v1_max = struct.unpack('f',f.read(4))[0]
+                    scale.uv1_scale = [[scale.u1_min,scale.u1_max,scale.u1_max-scale.u1_min],[scale.v1_min,scale.v1_max,scale.v1_max-scale.v1_min]]
 
                 # Mesh data Block
                 if content_table.entries[x].hash == b"\x9D\x84\x81\x4A\xB4\x42\xEE\xFB\xAC\x56\xC9\xA3\x18\x0F\x53\xE6":
