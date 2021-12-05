@@ -56,9 +56,11 @@ with open(sys.argv[1],'rb') as f:
             # vector header hash?
             offset = entry.data_reference.offset
             f.seek(offset + 0x20)
-            some_count = int.from_bytes(f.read(4),'little')
+            some_count = int.from_bytes(f.read(4),'little') # looks like 0x1c sized entries directly after subtable 1, in block with hash b'A\r\x81\x13\x06D\x15<Y\x94v\xaa\x07=\xf1\xa7'
+                    # (the offset isn't correct, probably has something to do with parent stuff, but the size fits)
             f.seek(offset + 0x34)
-            data_entries_count = int.from_bytes(f.read(4),'little') # the counts of the subtable_1 entries added together result in this value
+            data_entries_count = int.from_bytes(f.read(4),'little') # the counts of the subtable_1 entries added together result in this value, in block with hash b'B\r\x81\x13\x07D\x15<`\x94v\xaa\x08=\xf1\xa7'
+                    # (offset isn't correct, as before), entry size 0x2
             f.seek(offset + 0x48)
             subtable_1_count = int.from_bytes(f.read(4),'little')
 
