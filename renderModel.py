@@ -86,12 +86,14 @@ class SourceMesh:
         self.weights = []
         self.weight_pairs = []
         self.parts = []
+        self.index_count = -1
 
 class SourceMeshParts:
     def __init__(self):
         self.parts = []
         self.vertices = -1
         self.lod = -1
+        self.index_count = -1
 
 class Scale:
     x_min = -1
@@ -212,7 +214,7 @@ class ImportRenderModel(bpy.types.Operator):
             vert_arr = []
 
 
-            print("importing mesh")
+            #print("importing mesh")
             # add all the vertices
             for idx in range(len(blocks)):
                 block = blocks[idx]
@@ -222,7 +224,7 @@ class ImportRenderModel(bpy.types.Operator):
                     if block.vertex_stride == 0 or block.size == 0:
                         continue
                     nVerts = block.size//block.vertex_stride
-                    print(f"Adding {nVerts} vertices")
+                    #print(f"Adding {nVerts} vertices")
                     #mesh.vertices.add(nVerts)
                     vert_arr.extend((0.0,)*nVerts)
                     for j in range(block.offset,block.offset + block.size,block.vertex_stride):
@@ -276,13 +278,15 @@ class ImportRenderModel(bpy.types.Operator):
                         current_vert += 1
                         #print(f"UV1: {u} {v}")
 
-            print(f"UV0 len: {len(uv0[0])}")
-            print(f"UV1 len: {len(uv1)}")
+            #print(f"UV0 len: {len(uv0[0])}")
+            #print(f"UV1 len: {len(uv1)}")
             # combine the vertices into faces
-            if vert_count >= 0x10000:
-                index_len = 4
-            else:
-                index_len = 2
+            #if vert_count >= 0x10000:
+            #    index_len = 4
+            #    print(f"Index len 4 for vert count {vert_count}")
+            #else:
+            #    index_len = 2
+            index_len = src_mesh.index_block.size // src_mesh.index_count
             #print(f"Mesh has {hex(vert_count)} vertices")
             if vert_count == 0:
                 return
@@ -301,7 +305,7 @@ class ImportRenderModel(bpy.types.Operator):
                 nFace += 1
 
 
-            print("faces done")
+            #print("faces done")
             mesh.from_pydata(vert_arr,edges,list(faces.values()))
             #mesh.validate()
             #mesh.update()
@@ -320,7 +324,7 @@ class ImportRenderModel(bpy.types.Operator):
                     except:
                         break
 
-            print("UV done")
+            #print("UV done")
             return
 
         def openRenderModel(f):
@@ -405,6 +409,7 @@ class ImportRenderModel(bpy.types.Operator):
 
                     source_mesh = SourceMeshParts()
                     nVerts = 0
+                    nIdx = 0
                     for p in range(nParts):
                         part_offset = ref_offset + p * 0x18
                         #print(f"Part data is at {hex(part_offset)} with ref offset {hex(ref_offset)}")
@@ -416,7 +421,6 @@ class ImportRenderModel(bpy.types.Operator):
                         part.index_count = int.from_bytes(f.read(4),'little')
                         f.seek(part_offset + 0x14)
                         part.vertex_count = int.from_bytes(f.read(2),'little')
-                        #print(part.material_index)
                         part.material_path = string_table.strings[part.material_index]
                         #print(f"Using material: {part.material_path}")
                         if len(materials)-1 < part.material_index:
@@ -426,10 +430,12 @@ class ImportRenderModel(bpy.types.Operator):
                             #print(f"Reading material {part.material_path}")
                             materials[part.material_index].readMaterial(self.root_folder + "/" + part.material_path.replace("\\","/").replace("//","/") + ".material",self.root_folder,import_settings)
                         nVerts += part.vertex_count
+                        nIdx += part.index_count
                         source_mesh.parts.append(part)
                         #print(f"Part has {hex(part.vertex_count)} vertices and uses material {hex(part.material_index)}")
                     source_mesh.lod = current_lod
                     source_mesh.vertices = nVerts
+                    source_mesh.index_count = nIdx
                     source_mesh_parts.append(source_mesh)
                     #print(f"mesh block array length: {hex(len(mesh_blocks))} current LOD: {hex(current_lod)}")
                     mesh_blocks[len(mesh_blocks) - current_max_lod  + current_lod].mesh_part = source_mesh
@@ -534,7 +540,7 @@ class ImportRenderModel(bpy.types.Operator):
                 if part_entries[x].type == part_entries[0].type + 1:
                     # index block
                     #print(f"index unk0xc: {hex(part_entries[x].unknown_0xc)}")
-                    #print(f"index block")
+                    #print(f"index block at {hex(offset)}")
                     f.seek(offset)
                     #print(f"unknown 32bit int at 0x00: {hex(int.from_bytes(f.read(4),'little'))}")
                     #print(f"unknown 32bit int at 0x04: {hex(int.from_bytes(f.read(4),'little'))}")
@@ -607,7 +613,10 @@ class ImportRenderModel(bpy.types.Operator):
                 if mesh_part.lod != import_settings.lod:
                     #print("LOD doesn't match, ignoring Mesh")
                     continue
-
+                #print("Mesh")
+                #for p in range(len(mesh_part.parts)):
+                #    print(f"unk 0xc: {hex(mesh_part.parts[p].unk0xc)} unk 0x10: {hex(mesh_part.parts[p].unk0x10)}")
+                src_mesh.index_count = mesh_part.index_count
                 src_mesh.vertex_blocks = vblocks
                 src_mesh.index_block = index_blocks[mesh_blocks[mesh_block].index_block]
                 scaleModifier = ScaleModifier()
