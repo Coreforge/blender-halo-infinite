@@ -164,6 +164,12 @@ class ImportRenderModel(bpy.types.Operator):
         default=True
     )
 
+    import_weights: bpy.props.BoolProperty(
+        name="Import vertex weights",
+        description="imports the vertex weights and vertex groups",
+        default=True
+    )
+
     root_folder: bpy.props.StringProperty(
         subtype="FILE_PATH",
         name="Asset Root",
@@ -200,6 +206,9 @@ class ImportRenderModel(bpy.types.Operator):
             uv0 = []
             uv1 = []
 
+            weights = []
+            weight_indicies = []
+
             frombytes = int.from_bytes
             model_scale = scale.model_scale
             uv0_scale = scale.uv0_scale
@@ -214,7 +223,7 @@ class ImportRenderModel(bpy.types.Operator):
             vert_arr = []
 
 
-            #print("importing mesh")
+            print("importing mesh")
             # add all the vertices
             for idx in range(len(blocks)):
                 block = blocks[idx]
@@ -278,8 +287,38 @@ class ImportRenderModel(bpy.types.Operator):
                         current_vert += 1
                         #print(f"UV1: {u} {v}")
 
-            #print(f"UV0 len: {len(uv0[0])}")
-            #print(f"UV1 len: {len(uv1)}")
+                if block.vertex_type == 7:
+                    # weights
+                    current_weight = len(weight_indicies)
+                    weight_indicies.extend([0.0,]*((block.size//block.vertex_stride)))
+                    for j in range(block.offset,block.offset + block.size,block.vertex_stride):
+                        chunk_offset = j
+                        these_weights = [x for x in chunk_data[j:j+4]]
+                        weight_indicies[current_weight] = these_weights
+                        current_weight += 1
+                        #print(these_weights)
+
+                if block.vertex_type == 8:
+                    # weights
+                    current_weight = len(weights)
+                    weights.extend([0.0,]*((block.size//block.vertex_stride)))
+                    for j in range(block.offset,block.offset + block.size,block.vertex_stride):
+                        chunk_offset = j
+                        these_weights = [x for x in chunk_data[j:j+4]]
+                        s = sum(these_weights)
+                        #s = 128
+                        if s != 0:
+                            norm_weights = [x/s for x in these_weights]
+                        else:
+                            norm_weights = [0, 0, 0, 0]
+                        weights[current_weight] = norm_weights
+                        current_weight += 1
+                        #print(norm_weights)
+                        
+            print(f"Weights len {len(weights)}")
+            print(f"Weight indicies len{len(weight_indicies)}")
+            print(f"UV0 len: {len(uv0)}")
+            print(f"UV1 len: {len(uv1)}")
             # combine the vertices into faces
             #if vert_count >= 0x10000:
             #    index_len = 4
@@ -301,11 +340,15 @@ class ImportRenderModel(bpy.types.Operator):
                 index_2 = frombytes(chunk_data[face_start+index_len:face_start+index_len*2],'little')
                 index_3 = frombytes(chunk_data[face_start+index_len*2:face_start+index_len*3],'little')
 
+                if index_1 >= len(vert_arr) or index_2 >= len(vert_arr) or index_3 >= len(vert_arr):
+                    print("Invalid vertex index! Skipping mesh (would likely be very broken otherwise)")
+                    return
+
                 faces[nFace] = (index_1,index_2,index_3)
                 nFace += 1
 
 
-            #print("faces done")
+            print("faces done")
             mesh.from_pydata(vert_arr,edges,list(faces.values()))
             #mesh.validate()
             #mesh.update()
@@ -324,7 +367,49 @@ class ImportRenderModel(bpy.types.Operator):
                     except:
                         break
 
-            #print("UV done")
+            print("UV done")
+
+            # weights
+            # calculate the number of vertex groups by joining all index lists and taking the maximum value
+            if self.import_weights:
+                nVertexGroups = max([max(x) for x in weight_indicies])
+                print(f"Vertex groups: {nVertexGroups}")
+
+                vertex_groups = [object.vertex_groups.new(name=f"vGroup{x}") for x in range(nVertexGroups+1)]
+
+                for x in mesh.vertices:
+                    if x.index >= len(weights):
+                        continue
+                    groups = []
+                    i = 0
+                    for g in weight_indicies[x.index]:
+                        if i > 3: break
+                        if not g in groups:
+                            print(g)
+                            vertex_groups[g].add([x.index],weights[x.index][i],'REPLACE')
+                            groups.append(g)
+                        i += 1
+
+            #vertex_group = object.vertex_groups.new(name="weights_group_0")
+            #for x in mesh.vertices:
+            #    if x.index >= len(weights):
+            #        continue
+            #    vertex_group.add([x.index],weights[x.index][0],'REPLACE')
+            #vertex_group = object.vertex_groups.new(name="weights_group_1")
+            #for x in mesh.vertices:
+            #    if x.index >= len(weights):
+            #        continue
+            #    vertex_group.add([x.index],weights[x.index][1],'REPLACE')
+            #vertex_group = object.vertex_groups.new(name="weights_group_2")
+            #for x in mesh.vertices:
+            #    if x.index >= len(weights):
+            #        continue
+            #    vertex_group.add([x.index],weights[x.index][2],'REPLACE')
+            #vertex_group = object.vertex_groups.new(name="weights_group_3")
+            #for x in mesh.vertices:
+            #    if x.index >= len(weights):
+            #        continue
+            #    vertex_group.add([x.index],weights[x.index][3],'REPLACE')
             return
 
         def openRenderModel(f):

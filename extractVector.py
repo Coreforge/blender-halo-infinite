@@ -63,6 +63,18 @@ with open(sys.argv[1],'rb') as f:
                     # (offset isn't correct, as before), entry size 0x2
             f.seek(offset + 0x48)
             subtable_1_count = int.from_bytes(f.read(4),'little')
+            print(f"Subtable 1: {hex(subtable_1_count)}")
+
+        if hash == b'A\r\x81\x13\x06D\x15<Y\x94v\xaa\x07=\xf1\xa7':
+            offset = entry.data_reference.offset + 0x68 +  subtable_1_count * 0x8   # something about the offset is broken, so this is needed
+            print(f"Offset: {hex(offset)}")
+            for  b in range(some_count):
+                off = offset + b * 0x1c
+                f.seek(off + 0x8)
+                print("Data block")
+                print(f"Some data block 0x8: {hex(int.from_bytes(f.read(4),'little'))}")
+                f.seek(off + 0x18)
+                print(f"Some data block 0x18: {hex(int.from_bytes(f.read(4),'little'))}")
 
         if hash == b'A-\x81\x13\x06D\x15<Y#v\xaa\x07=\xc2\xa7':
             # subtable 1
@@ -76,3 +88,10 @@ with open(sys.argv[1],'rb') as f:
                 entry.start = int.from_bytes(f.read(2),'little')
                 entry.count = int.from_bytes(f.read(2),'little')
                 print(f"Some Offset: {hex(entry.some_offset)} Start: {hex(entry.start)} Length: {hex(entry.count)}")
+
+        if hash == b'B\r\x81\x13\x07D\x15<`\x94v\xaa\x08=\xf1\xa7':
+            # data at the end
+            offset = entry.data_reference.offset + + 0x68 +  subtable_1_count * 0x8
+            for b in range(data_entries_count):
+                f.seek(offset + b * 2)
+                print(f"Data stuff: {hex(int.from_bytes(f.read(2),'little')) }")
