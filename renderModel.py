@@ -223,7 +223,7 @@ class ImportRenderModel(bpy.types.Operator):
             vert_arr = []
 
 
-            print("importing mesh")
+            #print("importing mesh")
             # add all the vertices
             for idx in range(len(blocks)):
                 block = blocks[idx]
@@ -315,10 +315,10 @@ class ImportRenderModel(bpy.types.Operator):
                         current_weight += 1
                         #print(norm_weights)
                         
-            print(f"Weights len {len(weights)}")
-            print(f"Weight indicies len{len(weight_indicies)}")
-            print(f"UV0 len: {len(uv0)}")
-            print(f"UV1 len: {len(uv1)}")
+            #print(f"Weights len {len(weights)}")
+            #print(f"Weight indicies len{len(weight_indicies)}")
+            #print(f"UV0 len: {len(uv0)}")
+            #print(f"UV1 len: {len(uv1)}")
             # combine the vertices into faces
             #if vert_count >= 0x10000:
             #    index_len = 4
@@ -341,14 +341,16 @@ class ImportRenderModel(bpy.types.Operator):
                 index_3 = frombytes(chunk_data[face_start+index_len*2:face_start+index_len*3],'little')
 
                 if index_1 >= len(vert_arr) or index_2 >= len(vert_arr) or index_3 >= len(vert_arr):
-                    print("Invalid vertex index! Skipping mesh (would likely be very broken otherwise)")
+                    print(f"Invalid vertex index on face {nFace}! Skipping mesh (would likely be very broken otherwise)")
+                    print(f"(data at {hex(face_start)})")
+                    print(f"data array size {hex(len(chunk_data))}")
                     return
 
                 faces[nFace] = (index_1,index_2,index_3)
                 nFace += 1
 
 
-            print("faces done")
+            #print("faces done")
             mesh.from_pydata(vert_arr,edges,list(faces.values()))
             #mesh.validate()
             #mesh.update()
@@ -367,13 +369,13 @@ class ImportRenderModel(bpy.types.Operator):
                     except:
                         break
 
-            print("UV done")
+            #print("UV done")
 
             # weights
             # calculate the number of vertex groups by joining all index lists and taking the maximum value
-            if self.import_weights:
+            if self.import_weights and len(weight_indicies) != 0 and len(weights) != 0:
                 nVertexGroups = max([max(x) for x in weight_indicies])
-                print(f"Vertex groups: {nVertexGroups}")
+                #print(f"Vertex groups: {nVertexGroups}")
 
                 vertex_groups = [object.vertex_groups.new(name=f"vGroup{x}") for x in range(nVertexGroups+1)]
 
@@ -385,7 +387,7 @@ class ImportRenderModel(bpy.types.Operator):
                     for g in weight_indicies[x.index]:
                         if i > 3: break
                         if not g in groups:
-                            print(g)
+                            #print(g)
                             vertex_groups[g].add([x.index],weights[x.index][i],'REPLACE')
                             groups.append(g)
                         i += 1
@@ -595,12 +597,16 @@ class ImportRenderModel(bpy.types.Operator):
                     # vertex block
                     #print(f"Block entry {hex(x)} at offset {hex(offset)}")
                     f.seek(offset)
-                    #print(f"unknown 32bit int at 0x00: {hex(int.from_bytes(f.read(4),'little'))}")
-                    #print(f"unknown 32bit int at 0x04: {hex(int.from_bytes(f.read(4),'little'))}")
-                    #print(f"unknown 32bit int at 0x08: {hex(int.from_bytes(f.read(4),'little'))}")
+                    unknown_0x00 = int.from_bytes(f.read(4),'little')
+                    unknown_0x04 = int.from_bytes(f.read(4),'little')
+                    unknown_0x08 = int.from_bytes(f.read(4),'little')
+                    #print(f"unknown 32bit int at 0x00: {hex(unknown_0x00)}")
+                    #print(f"unknown 32bit int at 0x04: {hex(unknown_0x04)}")
+                    #print(f"unknown 32bit int at 0x08: {hex(unknown_0x08)}")
                     f.seek(offset + 0xC)
                     block.vertex_type = int.from_bytes(f.read(4),'little')
-                    #print(f"unknown 32bit int at 0x10: {hex(int.from_bytes(f.read(4),'little'))}")
+                    unknown_0x10 = int.from_bytes(f.read(4),'little')
+                    #print(f"unknown 32bit int at 0x10: {hex(unknown_0x10)}")
                     f.seek(offset + 0x14)
                     block.vertex_stride = int.from_bytes(f.read(2),'little')
                     f.seek(offset + 0x18)
@@ -608,16 +614,26 @@ class ImportRenderModel(bpy.types.Operator):
                     block.offset = int.from_bytes(f.read(4),'little')       # 0x1c
                     block.size = int.from_bytes(f.read(4),'little')         # 0x20
                     block.type = int.from_bytes(f.read(4),'little')         # 0x24
-                    #print(f"unknown 32bit int at 0x28: {hex(int.from_bytes(f.read(4),'little'))}")
-                    #print(f"unknown 32bit int at 0x2c: {hex(int.from_bytes(f.read(4),'little'))}")
-                    #print(f"unknown 32bit int at 0x30: {hex(int.from_bytes(f.read(4),'little'))}")
-                    #print(f"unknown 32bit int at 0x34: {hex(int.from_bytes(f.read(4),'little'))}")
-                    #print(f"unknown 32bit int at 0x38: {hex(int.from_bytes(f.read(4),'little'))}")
-                    #print(f"unknown 32bit int at 0x3c: {hex(int.from_bytes(f.read(4),'little'))}")
-                    #print(f"unknown 32bit int at 0x40: {hex(int.from_bytes(f.read(4),'little'))}")
-                    #print(f"unknown 32bit int at 0x44: {hex(int.from_bytes(f.read(4),'little'))}")
-                    #print(f"unknown 32bit int at 0x48: {hex(int.from_bytes(f.read(4),'little'))}")
-                    #print(f"unknown 32bit int at 0x4c: {hex(int.from_bytes(f.read(4),'little'))}")
+                    unknown_0x28 = int.from_bytes(f.read(4),'little')
+                    unknown_0x2c = int.from_bytes(f.read(4),'little')
+                    unknown_0x30 = int.from_bytes(f.read(4),'little')
+                    unknown_0x34 = int.from_bytes(f.read(4),'little')
+                    unknown_0x38 = int.from_bytes(f.read(4),'little')
+                    unknown_0x3c = int.from_bytes(f.read(4),'little')
+                    unknown_0x40 = int.from_bytes(f.read(4),'little')
+                    unknown_0x44 = int.from_bytes(f.read(4),'little')
+                    unknown_0x48 = int.from_bytes(f.read(4),'little')
+                    unknown_0x4c = int.from_bytes(f.read(4),'little')
+                    #print(f"unknown 32bit int at 0x28: {hex(unknown_0x28)}")
+                    #print(f"unknown 32bit int at 0x2c: {hex(unknown_0x2c)}")
+                    #print(f"unknown 32bit int at 0x30: {hex(unknown_0x30)}")
+                    #print(f"unknown 32bit int at 0x34: {hex(unknown_0x34)}")
+                    #print(f"unknown 32bit int at 0x38: {hex(unknown_0x38)}")
+                    #print(f"unknown 32bit int at 0x3c: {hex(unknown_0x3c)}")
+                    #print(f"unknown 32bit int at 0x40: {hex(unknown_0x40)}")
+                    #print(f"unknown 32bit int at 0x44: {hex(unknown_0x44)}")
+                    #print(f"unknown 32bit int at 0x48: {hex(unknown_0x48)}")
+                    #print(f"unknown 32bit int at 0x4c: {hex(unknown_0x4c)}")
                     vertex_blocks.append(block)
                     offset += 0x50
                     continue
@@ -656,16 +672,30 @@ class ImportRenderModel(bpy.types.Operator):
             folder = pathlib.Path(self.filepath).parent
             
             # load all of the chunks into one array
-            # this part of the code is just copied over from HIME
+            
             chunk_data_map = {}
-            for i, chunk in enumerate([x for x in os.listdir(folder) if ".chunk" in x and ".render_model" in x]):  # praying they read in order - TODO check this with a large file >10 or >100 chunks
-                cdata = open(f"{folder}/{chunk}", "rb").read()
-                index = int(chunk[:-1].split(".chunk")[-1])
-                chunk_data_map[index] = cdata
-
+            more_chunks = True
             chunk_data = b""
-            for i in range(len(chunk_data_map.keys())):
-                chunk_data += chunk_data_map[i]
+            nChunk = 0
+            while more_chunks:
+                try:
+                    chunk_path = f"{self.filepath}[{nChunk}_mesh_resource.chunk{nChunk}]"
+                    print(f"Trying to read chunk {chunk_path}")
+                    chunk_data += open(chunk_path,'rb').read()
+                    nChunk += 1
+                except:
+                    more_chunks = False
+            print(f"Read {nChunk} chunks ({hex(len(chunk_data))} bytes)")
+
+            # this part of the code is just copied over from HIME
+            #for i, chunk in enumerate([x for x in os.listdir(folder) if ".chunk" in x and ".render_model" in x]):  # praying they read in order - TODO check this with a large file >10 or >100 chunks
+            #    cdata = open(f"{folder}/{chunk}", "rb").read()
+            #    index = int(chunk[:-1].split(".chunk")[-1])
+            #    chunk_data_map[index] = cdata
+#
+            #chunk_data = b""
+            #for i in range(len(chunk_data_map.keys())):
+            #    chunk_data += chunk_data_map[i]
 
 
 
