@@ -196,10 +196,10 @@ class ImportRenderModel(bpy.types.Operator):
 
     def execute(self, context):
 
-        def processMesh(src_mesh, chunk_data, scale, scaleModifier):
+        def processMesh(src_mesh, chunk_data, scale, scaleModifier, name):
 
-            mesh = bpy.data.meshes.new("test mesh")
-            object = bpy.data.objects.new("test object",mesh)
+            mesh = bpy.data.meshes.new(name)
+            object = bpy.data.objects.new(name,mesh)
             bpy.context.view_layer.active_layer_collection.collection.objects.link(object)
             vert_count = 0
 
@@ -680,7 +680,7 @@ class ImportRenderModel(bpy.types.Operator):
             while more_chunks:
                 try:
                     chunk_path = f"{self.filepath}[{nChunk}_mesh_resource.chunk{nChunk}]"
-                    print(f"Trying to read chunk {chunk_path}")
+                    #print(f"Trying to read chunk {chunk_path}")
                     chunk_data += open(chunk_path,'rb').read()
                     nChunk += 1
                 except:
@@ -728,6 +728,18 @@ class ImportRenderModel(bpy.types.Operator):
                 if mesh_part.lod != import_settings.lod:
                     #print("LOD doesn't match, ignoring Mesh")
                     continue
+
+                material_path = mesh_part.parts[0].material_path
+                mesh_name = ""
+                if len(string_table.name_string.split('\\')) >= 2:
+                    mesh_name += string_table.name_string.split('\\')[-2]
+                if len(material_path.split('\\')) >= 1:
+                    mesh_name += "."
+                    mesh_name += material_path.split('\\')[-1]
+                #mesh_name = string_table.name_string.split('\\')[-2] + "." + material_path.split('\\')[-1]
+                if mesh_name == "":
+                    mesh_name = "unknown mesh"
+                print(f"Using mesh name {mesh_name}")
                 #print("Mesh")
                 #for p in range(len(mesh_part.parts)):
                 #    print(f"unk 0xc: {hex(mesh_part.parts[p].unk0xc)} unk 0x10: {hex(mesh_part.parts[p].unk0x10)}")
@@ -738,7 +750,7 @@ class ImportRenderModel(bpy.types.Operator):
                 scaleModifier.x = self.scale_modifier[0]
                 scaleModifier.y = self.scale_modifier[1]
                 scaleModifier.z = self.scale_modifier[2]
-                processMesh(src_mesh,chunk_data, scale, scaleModifier)
+                processMesh(src_mesh,chunk_data, scale, scaleModifier,mesh_name)
 
             
 
