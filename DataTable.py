@@ -2,6 +2,8 @@ class DataTableEntry:
     offset = -1
     size = -1
     def __init__(self):
+        self.offset = -1
+        self.size = -1
         pass
 
 class DataTable:

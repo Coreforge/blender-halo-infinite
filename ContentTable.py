@@ -3,7 +3,11 @@ class ContentTableEntry:
     data_reference = None
     data_parent = None
     offset = None
-    def __init__(self) -> None:
+    def __init__(self):
+        self.hash = None
+        self.data_reference = None
+        self.data_parent = None
+        self.offset = None
         pass
 
 class ContentTable:

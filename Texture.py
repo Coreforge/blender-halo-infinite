@@ -356,8 +356,6 @@ class Texture:
                                     print("Couldn't build DDS Header")
                                     continue
                                 dds_data.append(img_data)
-                                with open("/home/ich/haloRIP/test.dds",'w+b') as dds_out:
-                                    dds_out.write(b''.join(dds_data))
                                 
                                 if format == 0x54:
                                     decoded_data = texture2ddecoder.decode_bc5(img_data,width,height)
