@@ -5,6 +5,7 @@ import pathlib
 import os
 import struct
 import sys
+import mathutils
 
 
 if 'DEBUG_MODE' in sys.argv:
@@ -170,6 +171,12 @@ class ImportRenderModel(bpy.types.Operator):
         default=True
     )
 
+    import_normals: bpy.props.BoolProperty(
+        name="(potentialy broken) Import Normals",
+        description="(potentially broken) import mesh normals",
+        default=True
+    )
+
     root_folder: bpy.props.StringProperty(
         subtype="FILE_PATH",
         name="Asset Root",
@@ -222,6 +229,7 @@ class ImportRenderModel(bpy.types.Operator):
 
             vert_arr = []
 
+            normals = []
 
             #print("importing mesh")
             # add all the vertices
@@ -286,6 +294,58 @@ class ImportRenderModel(bpy.types.Operator):
                         uv1[current_vert] = [u,v]
                         current_vert += 1
                         #print(f"UV1: {u} {v}")
+
+                if block.vertex_type == 5:
+                    print(f"Normal stride: {hex(block.vertex_stride)}")
+                    current_vert = len(uv1)
+                    normals.extend([0.0,]*((block.size//block.vertex_stride)))
+                    for j in range(block.offset,block.offset + block.size,block.vertex_stride):
+                        chunk_offset = j
+                        x = (frombytes(chunk_data[j:j+2],'little') & 0x3ff) / 1023 - 0.5
+                        y = ((frombytes(chunk_data[j+1:j+3],'little') & 0xffc) >> 2) / 1023 - 0.5
+                        z = ((frombytes(chunk_data[j+2:j+4],'little') & 0x3ff0) >> 4) / 1023 - 0.5
+                        
+                        sqrt_of_two = 2 ** 0.5
+
+                        #x /= sqrt_of_two
+                        #y /= sqrt_of_two
+                        #z /= sqrt_of_two
+                        w = (1-x**2-y**2-z**2)**0.5
+
+                        missing = chunk_data[j+3] >> 6
+                        #print(missing)
+                        if missing == 1:
+                            quat = mathutils.Quaternion((w,x,y,z))
+                        elif missing == 2:
+                            quat = mathutils.Quaternion((x,w,y,z))
+                        elif missing == 3:
+                            quat = mathutils.Quaternion((x,y,w,z))
+                        elif missing == 0:
+                            quat = mathutils.Quaternion((x,y,z,w))
+                        #print(f"Normal: {quat.to_euler()}")
+                        #norm_data = frombytes(chunk_data[j:j+4],'little')
+                        #x = (norm_data & 0x3ff) / 1023
+                        #y = ((norm_data >> 10) & 0x3ff) / 1023
+                        #z = ((norm_data >> 20) & 0x3ff) / 1023
+                        #quat.rotate(mathutils.Euler((1,0.8,0),'XYZ'))
+                        normals[current_vert] = quat.to_axis_angle()[0]
+                        current_vert += 1
+                        #print(f"Normal data: {hex(frombytes(chunk_data[j:j+2],'little'))} {hex(frombytes(chunk_data[j+2:j+4],'little'))} dropped: {chunk_data[j+3] >> 6}")
+                        print(f"Normal {x} {y} {z} {w}")
+                
+                if block.vertex_type == 6:
+                    print(f"Tangent stride: {hex(block.vertex_stride)}")
+                    for j in range(block.offset,block.offset + block.size,block.vertex_stride):
+                        chunk_offset = j
+                        x = (frombytes(chunk_data[j:j+2],'little') & 0x3ff) / 1023 - 0.5
+                        y = ((frombytes(chunk_data[j+1:j+3],'little') & 0xffc) >> 2) / 1023 - 0.5
+                        z = ((frombytes(chunk_data[j+2:j+4],'little') & 0x3ff0) >> 4) / 1023 - 0.5
+                        
+                        #x /= 1023
+                        #y /= 1023
+                        #z /= 1023
+                        #print(f"Tangent {x} {y} {z} {chunk_data[j+3] >> 6}")
+                        #print(f"Tangent data: {hex(frombytes(chunk_data[j:j+2],'little'))} {hex(frombytes(chunk_data[j+2:j+4],'little'))}")
 
                 if block.vertex_type == 7:
                     # weights
@@ -370,6 +430,18 @@ class ImportRenderModel(bpy.types.Operator):
                         break
 
             #print("UV done")
+
+            if self.import_normals:
+                #normal_loops = [0.0,]*len(mesh.loops)
+                #for l in range(len(mesh.loops)):
+                #    #mesh.loops[l].normal = normals[mesh.loops[l].vertex_index][1]
+                #    normal_loops[l] = normals[mesh.loops[l].vertex_index][0]
+                #print(normal_loops)
+                #mesh.calc_normals_split()
+                mesh.normals_split_custom_set([(0,0,0) for l in mesh.loops])
+                mesh.normals_split_custom_set_from_vertices(normals)
+                mesh.update()
+                    
 
             # weights
             # calculate the number of vertex groups by joining all index lists and taking the maximum value
