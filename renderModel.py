@@ -580,14 +580,15 @@ class ImportRenderModel(bpy.types.Operator):
                         part.index_count = int.from_bytes(f.read(4),'little')
                         f.seek(part_offset + 0x14)
                         part.vertex_count = int.from_bytes(f.read(2),'little')
-                        part.material_path = string_table.strings[part.material_index]
-                        #print(f"Using material: {part.material_path}")
-                        if len(materials)-1 < part.material_index:
-                            for additional_entries in range(part.material_index + 1 - len(materials)):
-                                materials.append(Material())
-                        if not materials[part.material_index].read_data and self.auto_import_dependencies:
-                            #print(f"Reading material {part.material_path}")
-                            materials[part.material_index].readMaterial(self.root_folder + "/" + part.material_path.replace("\\","/").replace("//","/") + ".material",self.root_folder,import_settings)
+                        if part.material_index < len(string_table.strings):
+                            part.material_path = string_table.strings[part.material_index]
+                            #print(f"Using material: {part.material_path}")
+                            if len(materials)-1 < part.material_index:
+                                for additional_entries in range(part.material_index + 1 - len(materials)):
+                                    materials.append(Material())
+                            if not materials[part.material_index].read_data and self.auto_import_dependencies:
+                                #print(f"Reading material {part.material_path}")
+                                materials[part.material_index].readMaterial(self.root_folder + "/" + part.material_path.replace("\\","/").replace("//","/") + ".material",self.root_folder,import_settings)
                         nVerts += part.vertex_count
                         nIdx += part.index_count
                         source_mesh.parts.append(part)
