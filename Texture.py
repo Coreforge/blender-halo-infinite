@@ -322,7 +322,7 @@ class Texture:
                         # DDS Header info stuff
                         offset = content_entry.data_reference.offset
                         f.seek(offset + 0x1d)
-                        format = int.from_bytes(f.read(4),'little')
+                        format = int.from_bytes(f.read(2),'little')
                         f.seek(offset + 0x40)
                         resourceDimension = int.from_bytes(f.read(4),'little')
 
