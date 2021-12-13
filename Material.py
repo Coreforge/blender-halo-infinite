@@ -26,6 +26,7 @@ class Material:
         self.string_table = StringTable()
         self.material_content_table = ContentTable()
         self.read_data = False
+        self.name = ""
         pass
 
     def readMaterial(self,path,root,import_settings):
@@ -33,6 +34,7 @@ class Material:
             #print(path)
             if not self.file_header.checkMagic(fmat):
                 print(f"File {path} has the wrong magic")
+                return
             self.file_header.readHeader(fmat)
             #print(f"{hex(self.file_header.content_table_count)} {hex(self.file_header.data_table_count)}")
             self.data_entry_table.readTable(fmat,self.file_header)

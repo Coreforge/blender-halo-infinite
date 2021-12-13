@@ -44,6 +44,7 @@ class Part:
     index_count = int
     vertex_count = int
     material_path = ""
+    material = None
 
     def __init__(self):
         self.material_index = -1
@@ -51,6 +52,7 @@ class Part:
         self.index_count = -1
         self.vertex_count = -1
         self.material_path = ""
+        self.material = None
 
 class ModelPartEnty:
     def __init__(self):
@@ -87,6 +89,7 @@ class SourceMesh:
         self.weight_pairs = []
         self.parts = []
         self.index_count = -1
+        self.mesh_parts = []
 
 class SourceMeshParts:
     def __init__(self):
@@ -170,6 +173,12 @@ class ImportRenderModel(bpy.types.Operator):
         default=True
     )
 
+    add_materials: bpy.props.BoolProperty(
+        name="Add materials",
+        description="adds an empty material for the materials used by the model",
+        default=True
+    )
+
     root_folder: bpy.props.StringProperty(
         subtype="FILE_PATH",
         name="Asset Root",
@@ -221,7 +230,8 @@ class ImportRenderModel(bpy.types.Operator):
             blocks = src_mesh.vertex_blocks
 
             vert_arr = []
-
+            material_slots = {}
+            material_slot_indicies = {}
 
             #print("importing mesh")
             # add all the vertices
@@ -371,6 +381,27 @@ class ImportRenderModel(bpy.types.Operator):
 
             #print("UV done")
 
+            for p in range(len(src_mesh.mesh_parts)):
+                print(f"Mesh part index offset: {hex(src_mesh.mesh_parts[p].index_offset)} count: {hex(src_mesh.mesh_parts[p].index_count)}")
+                first_face = src_mesh.mesh_parts[p].index_offset // 3
+                face_count = src_mesh.mesh_parts[p].index_count // 3
+                part_faces = mesh.polygons[first_face:first_face+face_count]
+                if src_mesh.mesh_parts[p].material not in material_slots.keys():
+                    if self.add_materials:
+                        if src_mesh.mesh_parts[p].material.name not in bpy.data.materials.keys():
+                            bpy.data.materials.new(src_mesh.mesh_parts[p].material.name)
+                            bpy.data.materials[src_mesh.mesh_parts[p].material.name].use_nodes = True
+                        mesh.materials.append(bpy.data.materials[src_mesh.mesh_parts[p].material.name])
+                    else:
+                        mesh.materials.append(None)
+                    material_slots[src_mesh.mesh_parts[p].material] = mesh.materials[-1]
+                    material_slot_indicies[src_mesh.mesh_parts[p].material] = len(material_slot_indicies)
+                    print(f"Added material slot for material {src_mesh.mesh_parts[p].material.name}")
+                for face in part_faces:
+                    face.material_index = material_slot_indicies[src_mesh.mesh_parts[p].material]
+                    pass
+                pass
+
             # weights
             # calculate the number of vertex groups by joining all index lists and taking the maximum value
             if self.import_weights and len(weight_indicies) != 0 and len(weights) != 0:
@@ -517,6 +548,8 @@ class ImportRenderModel(bpy.types.Operator):
                             if not materials[part.material_index].read_data and self.auto_import_dependencies:
                                 #print(f"Reading material {part.material_path}")
                                 materials[part.material_index].readMaterial(self.root_folder + "/" + part.material_path.replace("\\","/").replace("//","/") + ".material",self.root_folder,import_settings)
+                            materials[part.material_index].name = part.material_path.split('\\')[-1]
+                            part.material = materials[part.material_index]
                         nVerts += part.vertex_count
                         nIdx += part.index_count
                         source_mesh.parts.append(part)
@@ -747,6 +780,7 @@ class ImportRenderModel(bpy.types.Operator):
                 src_mesh.index_count = mesh_part.index_count
                 src_mesh.vertex_blocks = vblocks
                 src_mesh.index_block = index_blocks[mesh_blocks[mesh_block].index_block]
+                src_mesh.mesh_parts = mesh_part.parts
                 scaleModifier = ScaleModifier()
                 scaleModifier.x = self.scale_modifier[0]
                 scaleModifier.y = self.scale_modifier[1]
