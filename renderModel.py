@@ -119,6 +119,12 @@ class Scale:
     v1_min = -1
     v1_max = -1
     uv1_scale = [[],[]]
+
+    u2_min = -1
+    u2_max = -1
+    v2_min = -1
+    v2_max = -1
+    uv2_scale = [[],[]]
     def __init__(self):
         self.x_min = -1
         self.x_max = -1
@@ -221,6 +227,7 @@ class ImportRenderModel(bpy.types.Operator):
 
             uv0 = []
             uv1 = []
+            uv2 = []
 
             weights = []
             weight_indicies = []
@@ -229,6 +236,7 @@ class ImportRenderModel(bpy.types.Operator):
             model_scale = scale.model_scale
             uv0_scale = scale.uv0_scale
             uv1_scale = scale.uv1_scale
+            uv2_scale = scale.uv2_scale
 
             modX = scaleModifier.x
             modY = scaleModifier.y
@@ -276,6 +284,7 @@ class ImportRenderModel(bpy.types.Operator):
                         #mesh.vertices[vert_count].co = (x,y,z)
                         vert_arr[vert_count] = (x,y,z)
                         vert_count += 1
+                    continue
 
                 # UV
                 if block.vertex_type == 1:
@@ -291,6 +300,7 @@ class ImportRenderModel(bpy.types.Operator):
                         uv0[current_vert] = (u,v)
                         current_vert += 1
                         #print(f"UV0: {u} {v}")
+                    continue
 
                 if src_mesh.vertex_blocks[idx].vertex_type == 2:
                     #nVerts = (int)(src_mesh.vertex_blocks[x].size / src_mesh.vertex_blocks[x].vertex_stride)
@@ -305,6 +315,23 @@ class ImportRenderModel(bpy.types.Operator):
                         uv1[current_vert] = [u,v]
                         current_vert += 1
                         #print(f"UV1: {u} {v}")
+                    continue
+
+                if src_mesh.vertex_blocks[idx].vertex_type == 4:
+                    #nVerts = (int)(src_mesh.vertex_blocks[x].size / src_mesh.vertex_blocks[x].vertex_stride)
+                    current_vert = len(uv2)
+                    uv2.extend([0.0,]*((block.size//block.vertex_stride)))
+                    for j in range(block.offset,block.offset + block.size,block.vertex_stride):
+                        chunk_offset = j
+
+                        u = frombytes(chunk_data[chunk_offset:chunk_offset+2],'little') / (2 ** 16 - 1) * uv2_scale[0][-1] + uv2_scale[0][0]
+                        v = frombytes(chunk_data[chunk_offset+2:chunk_offset+4],'little') / (2 ** 16 - 1) * uv2_scale[1][-1] + uv2_scale[1][0]
+                        #uv1.append([u,v])
+                        uv2[current_vert] = [u,v]
+                        #print(f"U {u} V {v}")
+                        current_vert += 1
+                        #print(f"UV1: {u} {v}")
+                    continue
 
                 if block.vertex_type == 5:
                     print(f"Normal stride: {hex(block.vertex_stride)}")
@@ -342,7 +369,8 @@ class ImportRenderModel(bpy.types.Operator):
                         normals[current_vert] = quat.to_axis_angle()[0]
                         current_vert += 1
                         #print(f"Normal data: {hex(frombytes(chunk_data[j:j+2],'little'))} {hex(frombytes(chunk_data[j+2:j+4],'little'))} dropped: {chunk_data[j+3] >> 6}")
-                        print(f"Normal {x} {y} {z} {w}")
+                        #print(f"Normal {x} {y} {z} {w}")
+                    continue
                 
                 if block.vertex_type == 6:
                     print(f"Tangent stride: {hex(block.vertex_stride)}")
@@ -357,6 +385,7 @@ class ImportRenderModel(bpy.types.Operator):
                         #z /= 1023
                         #print(f"Tangent {x} {y} {z} {chunk_data[j+3] >> 6}")
                         #print(f"Tangent data: {hex(frombytes(chunk_data[j:j+2],'little'))} {hex(frombytes(chunk_data[j+2:j+4],'little'))}")
+                    continue
 
                 if block.vertex_type == 7:
                     # weights
@@ -368,6 +397,7 @@ class ImportRenderModel(bpy.types.Operator):
                         weight_indicies[current_weight] = these_weights
                         current_weight += 1
                         #print(these_weights)
+                    continue
 
                 if block.vertex_type == 8:
                     # weights
@@ -385,6 +415,8 @@ class ImportRenderModel(bpy.types.Operator):
                         weights[current_weight] = norm_weights
                         current_weight += 1
                         #print(norm_weights)
+                    continue
+                print(f"Unknown block type {block.vertex_type} with stride {hex(block.vertex_stride)} size {hex(block.size)} at {hex(block.offset)}")
                         
             #print(f"Weights len {len(weights)}")
             #print(f"Weight indicies len{len(weight_indicies)}")
@@ -437,6 +469,13 @@ class ImportRenderModel(bpy.types.Operator):
                 for loop in range(len(mesh.loops)):
                     try:
                         uv_layer.data[mesh.loops[loop].index].uv = (uv1[mesh.loops[loop].vertex_index][0],uv1[mesh.loops[loop].vertex_index][1])
+                    except:
+                        break
+                
+                uv_layer = mesh.uv_layers.new(name="UV2")
+                for loop in range(len(mesh.loops)):
+                    try:
+                        uv_layer.data[mesh.loops[loop].index].uv = (uv2[mesh.loops[loop].vertex_index][0],uv2[mesh.loops[loop].vertex_index][1])
                     except:
                         break
 
@@ -570,26 +609,31 @@ class ImportRenderModel(bpy.types.Operator):
 
                 # Scale data Block
                 if content_table.entries[x].hash == b"\xAC\xFD\x51\xFE\x78\x47\xFF\x62\x54\x30\xC3\xA8\x6C\xA9\x23\xA0":
-
+                    print(f"Scale at {hex(content_table.entries[x].data_reference.offset)} size {hex(content_table.entries[x].data_reference.size)}")
                     f.seek(content_table.entries[x].data_reference.offset + 4)
                     scale = Scale()
-                    scale.x_min = struct.unpack('f',f.read(4))[0]
-                    scale.x_max = struct.unpack('f',f.read(4))[0]
-                    scale.y_min = struct.unpack('f',f.read(4))[0]
-                    scale.y_max = struct.unpack('f',f.read(4))[0]
-                    scale.z_min = struct.unpack('f',f.read(4))[0]
-                    scale.z_max = struct.unpack('f',f.read(4))[0]
+                    scale.x_min = struct.unpack('f',f.read(4))[0]       # 0x04
+                    scale.x_max = struct.unpack('f',f.read(4))[0]       # 0x08
+                    scale.y_min = struct.unpack('f',f.read(4))[0]       # 0x0c
+                    scale.y_max = struct.unpack('f',f.read(4))[0]       # 0x10
+                    scale.z_min = struct.unpack('f',f.read(4))[0]       # 0x14
+                    scale.z_max = struct.unpack('f',f.read(4))[0]       # 0x18
                     scale.model_scale = [[scale.x_min, scale.x_max, scale.x_max-scale.x_min], [scale.y_min, scale.y_max, scale.y_max-scale.y_min], [scale.z_min, scale.z_max, scale.z_max-scale.z_min]]
-                    scale.u0_min = struct.unpack('f',f.read(4))[0]
-                    scale.u0_max = struct.unpack('f',f.read(4))[0]
-                    scale.v0_min = struct.unpack('f',f.read(4))[0]
-                    scale.v0_max = struct.unpack('f',f.read(4))[0]
+                    scale.u0_min = struct.unpack('f',f.read(4))[0]      # 0x1c
+                    scale.u0_max = struct.unpack('f',f.read(4))[0]      # 0x20
+                    scale.v0_min = struct.unpack('f',f.read(4))[0]      # 0x24
+                    scale.v0_max = struct.unpack('f',f.read(4))[0]      # 0x28
                     scale.uv0_scale = [[scale.u0_min,scale.u0_max,scale.u0_max-scale.u0_min],[scale.v0_min,scale.v0_max,scale.v0_max-scale.v0_min]]
-                    scale.u1_min = struct.unpack('f',f.read(4))[0]
-                    scale.u1_max = struct.unpack('f',f.read(4))[0]
-                    scale.v1_min = struct.unpack('f',f.read(4))[0]
-                    scale.v1_max = struct.unpack('f',f.read(4))[0]
+                    scale.u1_min = struct.unpack('f',f.read(4))[0]      # 0x2c
+                    scale.u1_max = struct.unpack('f',f.read(4))[0]      # 0x30
+                    scale.v1_min = struct.unpack('f',f.read(4))[0]      # 0x34
+                    scale.v1_max = struct.unpack('f',f.read(4))[0]      # 0x38
                     scale.uv1_scale = [[scale.u1_min,scale.u1_max,scale.u1_max-scale.u1_min],[scale.v1_min,scale.v1_max,scale.v1_max-scale.v1_min]]
+                    scale.u2_min = struct.unpack('f',f.read(4))[0]      # 0x3c
+                    scale.u2_max = struct.unpack('f',f.read(4))[0]      # 0x40
+                    scale.v2_min = struct.unpack('f',f.read(4))[0]      # 0x44
+                    scale.v2_max = struct.unpack('f',f.read(4))[0]      # 0x48
+                    scale.uv2_scale = [[scale.u2_min,scale.u2_max,scale.u2_max-scale.u2_min],[scale.v2_min,scale.v2_max,scale.v2_max-scale.v2_min]]
 
                 # Mesh data Block
                 if content_table.entries[x].hash == b"\x9D\x84\x81\x4A\xB4\x42\xEE\xFB\xAC\x56\xC9\xA3\x18\x0F\x53\xE6":
