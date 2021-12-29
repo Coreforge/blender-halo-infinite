@@ -4,7 +4,7 @@ import os
 
 
 from numpy.lib.function_base import append
-import bpy
+
 import numpy as np
 from dataclasses import dataclass, fields, field
 from typing import List
@@ -297,6 +297,7 @@ class Texture:
 
     def readTexture(self,path,name, import_settings):
         import texture2ddecoder
+        import bpy
         with open(path,'rb') as f:
             if not self.file_header.checkMagic(f):
                 print(f"File has the wrong magic")
@@ -385,3 +386,60 @@ class Texture:
                                 #    img_final[p*4+3] = 1
                                 #img.pixels = img_final[0:width*height*4]
                             tex.image = img
+
+    def exportTexture(self,path):
+        with open(path,'rb') as f:
+            if not self.file_header.checkMagic(f):
+                print(f"File has the wrong magic")
+
+
+            self.file_header.readHeader(f)
+            self.data_entry_table.readTable(f,self.file_header)
+            self.string_table.readStrings(f,self.file_header)
+            self.content_table.readTable(f,self.file_header,self.data_entry_table)
+
+            handle_name = path.split('/')[-1]
+            print(f"Texture File name: {handle_name}")
+            format = -1
+
+            for x in range(len(self.content_table.entries)):
+                    content_entry = self.content_table.entries[x]
+
+                    #if self.content_table.entries[x].data_reference is None:
+                    #    # Entry has no data linked
+                    #    continue
+                    
+                    if content_entry.hash == b'*\x80\xeb\x8akA\n\xf6\x9cp\x0c\x97MU6#':
+                        # DDS Header info stuff
+                        offset = content_entry.data_reference.offset
+                        f.seek(offset + 0x1d)
+                        format = int.from_bytes(f.read(4),'little')
+                        f.seek(offset + 0x40)
+                        resourceDimension = int.from_bytes(f.read(4),'little')
+
+                    if content_entry.hash == b'9, \xd1\xdcH\xfc\xbdI\xde+\x81\x93\xaf\xe8\xb0':
+                        # One of these hashes per resource file
+                        #nResourceFiles = content_entry.data_reference.size//0x10    # there are 0x10 bytes for each file
+                        #for chunk in range(nResourceFiles):
+                        #    offset = content_entry.data_reference.offset + chunk * 0x10
+                        #    f.seek(offset + 0xa)
+                        #    mipmap = int.from_bytes(f.read(1),'little')
+                        #    if mipmap != import_settings.mipmap:
+                        #        continue
+                        #    f.seek(offset + 0xc)
+                        #    width = int.from_bytes(f.read(2),'little')
+                        #    height = int.from_bytes(f.read(2),'little')
+                        #    chunk_name = path + "[" + str(chunk) + "_bitmap_resource_handle.chunk" + str(chunk) + "]"
+                        #    print(f"Reading texture block {chunk_name}")
+                        #    print(f"Width: {width} Height: {height} Format: {DXGI_FORMAT[format]} {hex(format)}")
+                        data_start = content_entry.data_parent.offset + content_entry.data_parent.size
+                        print(f"Texture data starts at {hex(data_start)}")
+                        tex_obj = TextureObject()
+                        tex_obj.width = 4096
+                        tex_obj.height = 111
+                        tex_obj.texture_format = format
+                        dds_data = self.createDDSHeader(tex_obj)
+                        print(f"Format: {DXGI_FORMAT[format]} {hex(format)}")
+                        f.seek(data_start)
+                        out = b''.join(dds_data) + f.read()
+                        return out
