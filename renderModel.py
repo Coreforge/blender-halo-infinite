@@ -192,6 +192,12 @@ class ImportRenderModel(bpy.types.Operator):
         default=True
     )
 
+    import_model: bpy.props.BoolProperty(
+        name="Import 3D Model",
+        description="import the 3D model",
+        default=True
+    )
+
     root_folder: bpy.props.StringProperty(
         subtype="FILE_PATH",
         name="Asset Root",
@@ -734,6 +740,9 @@ class ImportRenderModel(bpy.types.Operator):
                 entry.offset += data_offset
                 part_entries.append(entry)
 
+            if not self.import_model:
+                # everything after this is only needed for the 3D model, not if you only want the textures
+                return
 
             print(f"data offset is now {hex(data_offset)}")
             # sort entries into index and vertex blocks and parse those blocks
