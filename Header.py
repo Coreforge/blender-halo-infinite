@@ -11,6 +11,9 @@ class Header:
     data_block_table_count = -1
     data_block_table_offset = -1
     data_offset = -1
+    data_len = -1   #   Length of the data that is part of the usual data structure and gets referenced by the tables
+    other_data_len = -1     #   Length of additional data, in other formats
+    some_field_length = -1  #   Length of the field after the strings (unknown purpose)
 
     def __init__(self):
         pass
@@ -52,6 +55,15 @@ class Header:
         self.string_count = int.from_bytes(f.read(4),'little')     # 0x28
         self.string_length = int.from_bytes(f.read(4),'little')     # 0x2c
 
+        self.some_field_length = int.from_bytes(f.read(4),'little')     # 0x30
+
         # Data offset
         f.seek(0x38)
-        self.data_offset = int.from_bytes(f.read(4),'little')     # 0x20
+        self.data_offset = int.from_bytes(f.read(4),'little')     # 0x38
+        self.data_len = int.from_bytes(f.read(4),'little')     # 0x3c
+
+    def getOtherData(self,f):
+        data_start = self.string_offset + self.string_length + self.some_field_length
+        data_len = self.data_offset - data_start
+        f.seek(data_start)
+        return f.read(data_len)
