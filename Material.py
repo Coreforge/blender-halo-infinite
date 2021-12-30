@@ -65,9 +65,9 @@ class Material:
                         bpy.data.materials[material_name].node_tree.nodes.remove(node)
 
                     nodetree = bpy.data.materials[material_name].node_tree
-                    print(material_prefab.node_tree.nodes.keys())
+                    #print(material_prefab.node_tree.nodes.keys())
                     for node in material_prefab.node_tree.nodes:
-                        print(node)
+                        #print(node)
                         new_node = bpy.data.materials[material_name].node_tree.nodes.new(node.bl_idname)
                         new_node.location = node.location
                         new_node.label = node.label
@@ -84,10 +84,10 @@ class Material:
                             node_mask_1 = new_node
 
                         if(node.bl_idname == 'ShaderNodeGroup'):
-                            print("Copying group node")
+                            #print("Copying group node")
                             new_node.node_tree = node.node_tree
 
-                        print(node.inputs)
+                        #print(node.inputs)
 
                         #for input in node.inputs:
                         #    for link in input.links:
@@ -95,7 +95,7 @@ class Material:
                         #        
                         #        nodetree.links.new( nodetree.nodes[link.from_node.name].outputs[link.from_socket.name],
                         #                            nodetree.nodes[link.to_node.name].inputs[link.to_socket.name])
-                        print(node.outputs)
+                        #print(node.outputs)
                         #for output in node.outputs:
                         #    for link in input.links:
                         #        print(link)
@@ -127,10 +127,16 @@ class Material:
                     for off in range(content_entry.data_reference.offset,content_entry.data_reference.offset + content_entry.data_reference.size,0x9c):
                         fmat.seek(off)
                         id = int.from_bytes(fmat.read(4),'little')
+                        entry_type = int.from_bytes(fmat.read(4),'little')
+                        fmat.seek(off + 0x1c)
+                        tag = fmat.read(4)
                         fmat.seek(off+0x94)
                         idx = int.from_bytes(fmat.read(2),'little')
+                        #print(f"Material stuff type: {entry_type} idx: {idx} tag: {tag}")
+                        #if entry_type == 0:
+                        #    print(f"String: {self.string_table.strings[idx]}")
                         #print(f"Texture? entry id/type: {hex(id)} idx: {hex(idx)}")
-                        if id == 0xe5562d34:
+                        if id == 0xe5562d34 and tag == b'mtib':
                             print(f"Normal map: {self.string_table.strings[idx]}")
                             tex = Texture()
                             tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", path.split("/")[-1]+".normal",import_settings)
@@ -142,13 +148,13 @@ class Material:
                             tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", path.split("/")[-1]+".asg",import_settings)
                             if node_asg is not None and tex.blender_texture is not None:
                                 node_asg.image = tex.blender_texture.image
-                        if id == 0x9c06e777:
+                        if id == 0x9c06e777 and tag == b'mtib':
                             print(f"Mask 0 Control map: {self.string_table.strings[idx]}")
                             tex = Texture()
                             tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", path.split("/")[-1]+".mask_0",import_settings)
                             if node_mask_0 is not None and tex.blender_texture is not None:
                                 node_mask_0.image = tex.blender_texture.image
-                        if id == 0x7fb4ec19:
+                        if id == 0x7fb4ec19 and tag == b'mtib':
                             print(f"Mask 1 Control map: {self.string_table.strings[idx]}")
                             tex = Texture()
                             tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", path.split("/")[-1]+".mask_1",import_settings)

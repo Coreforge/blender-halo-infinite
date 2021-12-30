@@ -605,6 +605,7 @@ class ImportRenderModel(bpy.types.Operator):
             mesh_blocks = []
             materials = []
 
+            shader_prefab = None
 
             file_header = Header()
             data_entry_table = DataTable()
