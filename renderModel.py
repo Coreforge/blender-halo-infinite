@@ -192,6 +192,12 @@ class ImportRenderModel(bpy.types.Operator):
         default=True
     )
 
+    populate_shader: bpy.props.BoolProperty(
+        name="Setup shaders",
+        description="sets up textures for materials automatically (requires import dependencies)",
+        default=False
+    )
+
     import_model: bpy.props.BoolProperty(
         name="Import 3D Model",
         description="import the 3D model",
@@ -203,6 +209,18 @@ class ImportRenderModel(bpy.types.Operator):
         name="Asset Root",
         description="Path to use for additional data. Uses relative path from imported file if none is specified and import dependencies is active",
         default="/home/ich/haloRIP/HIMU/output"
+    )
+
+    shader_file: bpy.props.StringProperty(
+        name="Shader library",
+        description="Path to the blend file containing the shader",
+        default="/home/ich/haloRIP/blender_plugin/shaders/Infinite_MP_Shader_v1.8_Made_by_Grand_Bacon.blend"
+    )
+
+    shader_name: bpy.props.StringProperty(
+        name="Shader name",
+        description="Name of the shader within the library",
+        default="Infinite MP Shader v1.8 Made by Grand_Bacon"
     )
 
     mipmap: bpy.props.IntProperty(
@@ -605,6 +623,16 @@ class ImportRenderModel(bpy.types.Operator):
             import_settings.mipmap = self.mipmap
             import_settings.lod = self.lod
 
+            if self.populate_shader:
+                
+                # load the shader from the library
+                with bpy.data.libraries.load(self.shader_file, link=False) as (data_from, data_to):
+                    #shader_prefab = data_from.materials[self.shader_name]
+                    data_to.materials = [self.shader_name]
+                    #print(type(data_from.materials))
+                    pass
+                shader_prefab = bpy.data.materials[self.shader_name]
+                print(shader_prefab)
 
             # process content Table to populate the different Arrays for later use
             # sorts the entries based on the hash
@@ -667,10 +695,17 @@ class ImportRenderModel(bpy.types.Operator):
                             if len(materials)-1 < part.material_index:
                                 for additional_entries in range(part.material_index + 1 - len(materials)):
                                     materials.append(Material())
+
+                            materials[part.material_index].name = part.material_path.split('\\')[-1]
+
                             if not materials[part.material_index].read_data and self.auto_import_dependencies:
                                 #print(f"Reading material {part.material_path}")
-                                materials[part.material_index].readMaterial(self.root_folder + "/" + part.material_path.replace("\\","/").replace("//","/") + ".material",self.root_folder,import_settings)
-                            materials[part.material_index].name = part.material_path.split('\\')[-1]
+                                materials[part.material_index].readMaterial(self.root_folder + "/" + part.material_path.replace("\\","/").replace("//","/") + ".material",
+                                                                            self.root_folder,
+                                                                            import_settings,
+                                                                            add_material = self.populate_shader,
+                                                                            material_name = materials[part.material_index].name,
+                                                                            material_prefab = shader_prefab)
                             part.material = materials[part.material_index]
                         nVerts += part.vertex_count
                         nIdx += part.index_count

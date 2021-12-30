@@ -217,6 +217,7 @@ class Texture:
     string_table = StringTable
     content_table = ContentTable
     read_data = False
+    blender_texture = None
 
     def __init__(self):
         self.file_header = Header()
@@ -224,6 +225,7 @@ class Texture:
         self.string_table = StringTable()
         self.content_table = ContentTable()
         self.read_data = False
+        self.blender_texture = None
         pass
 
 
@@ -386,6 +388,7 @@ class Texture:
                                 #    img_final[p*4+3] = 1
                                 #img.pixels = img_final[0:width*height*4]
                             tex.image = img
+                            self.blender_texture = tex
 
     def exportTexture(self,path):
         with open(path,'rb') as f:
