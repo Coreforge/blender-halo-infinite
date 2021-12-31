@@ -467,11 +467,11 @@ class ImportRenderModel(bpy.types.Operator):
                 index_2 = frombytes(chunk_data[face_start+index_len:face_start+index_len*2],'little')
                 index_3 = frombytes(chunk_data[face_start+index_len*2:face_start+index_len*3],'little')
 
-                if index_1 >= len(vert_arr) or index_2 >= len(vert_arr) or index_3 >= len(vert_arr):
-                    print(f"Invalid vertex index on face {nFace}! Skipping mesh (would likely be very broken otherwise)")
-                    print(f"(data at {hex(face_start)})")
-                    print(f"data array size {hex(len(chunk_data))}")
-                    return
+                #if index_1 >= len(vert_arr) or index_2 >= len(vert_arr) or index_3 >= len(vert_arr):
+                #    print(f"Invalid vertex index on face {nFace}! Skipping mesh (would likely be very broken otherwise)")
+                #    print(f"(data at {hex(face_start)})")
+                #    print(f"data array size {hex(len(chunk_data))}")
+                #    return
 
                 faces[nFace] = (index_1,index_2,index_3)
                 nFace += 1
@@ -496,12 +496,12 @@ class ImportRenderModel(bpy.types.Operator):
                     except:
                         break
                 
-                uv_layer = mesh.uv_layers.new(name="UV2")
-                for loop in range(len(mesh.loops)):
-                    try:
-                        uv_layer.data[mesh.loops[loop].index].uv = (uv2[mesh.loops[loop].vertex_index][0],uv2[mesh.loops[loop].vertex_index][1])
-                    except:
-                        break
+                #uv_layer = mesh.uv_layers.new(name="UV2")
+                #for loop in range(len(mesh.loops)):
+                #    try:
+                #        uv_layer.data[mesh.loops[loop].index].uv = (uv2[mesh.loops[loop].vertex_index][0],uv2[mesh.loops[loop].vertex_index][1])
+                #    except:
+                #        break
 
             #print("UV done")
 
