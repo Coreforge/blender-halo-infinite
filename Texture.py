@@ -1,6 +1,6 @@
 import sys
 import os
-
+import math
 
 
 from numpy.lib.function_base import append
@@ -9,11 +9,14 @@ import numpy as np
 from dataclasses import dataclass, fields, field
 from typing import List
 
+from BC5 import DecompressBC5_DualChannel_Internal, snorm
+
 if 'DEBUG_MODE' in sys.argv:
     from Header import Header
     from DataTable import DataTable, DataTableEntry
     from StringTable import StringTable
     from ContentTable import ContentTable, ContentTableEntry    
+    import BC5
 else:
     from . Header import Header
     from . DataTable import DataTable, DataTableEntry
@@ -296,7 +299,6 @@ class Texture:
         return dds_data
         #write_file(dds_header, tex, full_save_path)
 
-
     def readTexture(self,path,name, import_settings):
         import texture2ddecoder
         import bpy
@@ -353,25 +355,55 @@ class Texture:
                                 tex_obj.width = width
                                 tex_obj.height = height
                                 tex_obj.texture_format = format
-                                dds_data = self.createDDSHeader(tex_obj)
-
-                                if dds_data == None:
-                                    print("Couldn't build DDS Header")
-                                    continue
-                                dds_data.append(img_data)
+                                #dds_data = self.createDDSHeader(tex_obj)
+#
+                                #if dds_data == None:
+                                #    print("Couldn't build DDS Header")
+                                #    continue
+                                #dds_data.append(img_data)
                                 
                                 if format == 0x54:
-                                    decoded_data = texture2ddecoder.decode_bc5(img_data,width,height)
-                                    img_final = [0.0]*(len(decoded_data))
-                                    for x in range(len(decoded_data)):
-                                        img_final[x] = decoded_data[x] / 255
-                                    img.pixels = img_final
+                                    #with open("/home/ich/haloRIP/blender_plugin/normal.dds",'w+b') as normal:
+                                    #    normal.write(b''.join(dds_data))
+                                    #decoded_data = texture2ddecoder.decode_bc5(img_data,width,height)
+                                    decoded_data = [0,]*(width*height*4)
+                                    for x in range(len(img_data)//16):
+                                        block1 = int.from_bytes(img_data[x*16:(x*16)+4],'little')
+                                        block2 = int.from_bytes(img_data[(x*16)+4:(x*16)+8],'little')
+                                        block3 = int.from_bytes(img_data[(x*16)+8:(x*16)+12],'little')
+                                        block4 = int.from_bytes(img_data[(x*16)+12:(x*16)+16],'little')
+                                        decompressed_block = BC5.DecompressBC5_DualChannel_Internal([block1,block2,block3,block4])
+                                        blockX = x % (width//4)
+                                        blockY = x // (width//4)
+                                        #print(f"Block X {blockX} Block Y {blockY}")
+                                        for subY in range(4):
+                                            for subX in range(4):
+                                                decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4] = (decompressed_block[subY * 4 + subX][0])
+                                                decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 1] = (decompressed_block[subY * 4 + subX][1])
+                                                intermediate = (1 - ((decompressed_block[subY * 4 + subX][0]))**2 - ((decompressed_block[subY * 4 + subX][1]))**2)
+                                                if intermediate < 0:
+                                                    r = -1+math.sqrt(abs(intermediate))
+                                                else:
+                                                    r = math.sqrt(intermediate)
+                                                decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 2] = 0#mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1]))).dot(
+                                                 #   mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1])))
+                                                #)
+                                                decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 3] = 1
+                                    #img_final = [0.0]*(len(decoded_data))
+                                    #for x in range(len(decoded_data)):
+                                    #    img_final[x] = decoded_data[x] / 255
+                                    #img_final = [snorm(x) for x in decoded_data]
+                                    #for x in range(len(img_final)//4):
+                                    #    img_final[(x*4)+3] = 1
+                                    #print(f"max: {max(img_final)} min: {min(img_final)}")
+                                    img.pixels = decoded_data
 
                                 if format == 0x47:
                                     decoded_data = texture2ddecoder.decode_bc1(img_data,width,height)
-                                    img_final = [0.0]*(len(decoded_data))
-                                    for x in range(len(decoded_data)):
-                                        img_final[x] = decoded_data[x] / 255
+                                    #img_final = [0.0]*(len(decoded_data))
+                                    #for x in range(len(decoded_data)):
+                                    #    img_final[x] = decoded_data[x] / 255
+                                    img_final = [x/255 for x in decoded_data]
                                     img.pixels = img_final
                                 #
                                 #img_final = [0.0]*(width*height*4)
