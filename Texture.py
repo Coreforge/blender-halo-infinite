@@ -384,10 +384,10 @@ class Texture:
                                                     decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 1] = (decompressed_block[subY * 4 + subX][1])
                                                     intermediate = (1 - ((decompressed_block[subY * 4 + subX][0]))**2 - ((decompressed_block[subY * 4 + subX][1]))**2)
                                                     if intermediate < 0:
-                                                        r = -1+math.sqrt(abs(intermediate))
+                                                        r = 0#-1+math.sqrt(abs(intermediate))
                                                     else:
                                                         r = math.sqrt(intermediate)
-                                                    decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 2] = 0#mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1]))).dot(
+                                                    decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 2] = r#mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1]))).dot(
                                                      #   mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1])))
                                                     #)
                                                     decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 3] = 1
@@ -398,10 +398,10 @@ class Texture:
                                                     decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 1] = (decompressed_block[subY * 4 + subX][1]) / 2 + 0.5
                                                     intermediate = (1 - ((decompressed_block[subY * 4 + subX][0]))**2 - ((decompressed_block[subY * 4 + subX][1]))**2)
                                                     if intermediate < 0:
-                                                        r = -1+math.sqrt(abs(intermediate))
+                                                        r = 0#-1+math.sqrt(abs(intermediate))
                                                     else:
                                                         r = math.sqrt(intermediate)
-                                                    decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 2] = 0#mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1]))).dot(
+                                                    decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 2] = r#mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1]))).dot(
                                                      #   mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1])))
                                                     #)
                                                     decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 3] = 1
