@@ -404,8 +404,15 @@ class Texture:
                                     #img_final = [0.0]*(len(decoded_data))
                                     #for x in range(len(decoded_data)):
                                     #    img_final[x] = decoded_data[x] / 255
-                                    img_final = [x/255 for x in decoded_data]
-                                    img.pixels = img_final
+                                    #img_final = [x/255 for x in decoded_data]
+                                    
+                                    dat = [0.0,]*(width*height*4)
+                                    for x in range(width*height):
+                                        dat[x*4] = decoded_data[x*4+2] / 255
+                                        dat[x*4+1] = decoded_data[x*4+1] / 255
+                                        dat[x*4+2] = decoded_data[x*4] / 255
+                                        dat[x*4+3] = decoded_data[x*4+3] / 255
+                                    img.pixels = dat
                                 #
                                 #img_final = [0.0]*(width*height*4)
                                 #src_pos = 0
