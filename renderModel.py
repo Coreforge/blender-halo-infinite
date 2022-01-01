@@ -142,9 +142,11 @@ class ScaleModifier:
 class ImportSettings:
     lod = -1
     mipmap = -1
+    norm_signed = True
     def __init__(self):
         self.lod = -1
         self.mipmap = -1
+        self.norm_signed = True
 
 def readNullString(f, start):
     string = []
@@ -227,6 +229,12 @@ class ImportRenderModel(bpy.types.Operator):
         name="Mipmap level",
         description="Mipmap level of the textures to import.",
         default=0
+    )
+
+    norm_signed: bpy.props.BoolProperty(
+        name="Signed Texture Range",
+        description="import texures with a signed format as signed",
+        default=True
     )
 
     lod: bpy.props.IntProperty(
@@ -623,6 +631,7 @@ class ImportRenderModel(bpy.types.Operator):
             import_settings = ImportSettings()
             import_settings.mipmap = self.mipmap
             import_settings.lod = self.lod
+            import_settings.norm_signed = self.norm_signed
 
             if self.populate_shader:
                 
