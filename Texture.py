@@ -3,13 +3,13 @@ import os
 import math
 
 
-from numpy.lib.function_base import append
+#from numpy.lib.function_base import append
 
 import numpy as np
 from dataclasses import dataclass, fields, field
 from typing import List
 
-from BC5 import DecompressBC5_DualChannel_Internal, snorm
+#from BC5 import DecompressBC5_DualChannel_Internal, snorm
 
 if 'DEBUG_MODE' in sys.argv:
     from Header import Header
@@ -22,6 +22,7 @@ else:
     from . DataTable import DataTable, DataTableEntry
     from . StringTable import StringTable
     from . ContentTable import ContentTable, ContentTableEntry
+    from . import BC5
 
 
 
