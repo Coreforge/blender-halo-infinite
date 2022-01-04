@@ -138,28 +138,51 @@ class Material:
                         #print(f"Texture? entry id/type: {hex(id)} idx: {hex(idx)}")
                         if id == 0xe5562d34 and tag == b'mtib':
                             print(f"Normal map: {self.string_table.strings[idx]}")
-                            tex = Texture()
-                            tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", path.split("/")[-1]+".normal",import_settings)
-                            if node_normal is not None and tex.blender_texture is not None:
-                                node_normal.image = tex.blender_texture.image
+                            name = self.string_table.strings[idx].replace('\\','/').split('/')[-1].split('.')[0].split('{')[0]
+                            if name in bpy.data.textures.keys() and import_settings.reuse_textures:
+                                blend_tex = bpy.data.textures[name]
+                            else:
+                                tex = Texture()
+                                tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", name,import_settings)
+                                blend_tex = tex.blender_texture
+                            if node_normal is not None and blend_tex is not None:
+                                node_normal.image = blend_tex.image
+
                         if id == 0x1a319e59:
                             print(f"ASG Control map: {self.string_table.strings[idx]}")
-                            tex = Texture()
-                            tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", path.split("/")[-1]+".asg",import_settings)
-                            if node_asg is not None and tex.blender_texture is not None:
-                                node_asg.image = tex.blender_texture.image
+                            name = self.string_table.strings[idx].replace('\\','/').split('/')[-1].split('.')[0].split('{')[0]
+                            if name in bpy.data.textures.keys() and import_settings.reuse_textures:
+                                blend_tex = bpy.data.textures[name]
+                            else:
+                                tex = Texture()
+                                tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", name,import_settings)
+                                blend_tex = tex.blender_texture
+                            if node_asg is not None and blend_tex is not None:
+                                node_asg.image = blend_tex.image
+
                         if id == 0x9c06e777 and tag == b'mtib':
                             print(f"Mask 0 Control map: {self.string_table.strings[idx]}")
-                            tex = Texture()
-                            tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", path.split("/")[-1]+".mask_0",import_settings)
-                            if node_mask_0 is not None and tex.blender_texture is not None:
-                                node_mask_0.image = tex.blender_texture.image
+                            name = self.string_table.strings[idx].replace('\\','/').split('/')[-1].split('.')[0].split('{')[0]
+                            if name in bpy.data.textures.keys() and import_settings.reuse_textures:
+                                blend_tex = bpy.data.textures[name]
+                            else:
+                                tex = Texture()
+                                tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", name,import_settings)
+                                blend_tex = tex.blender_texture
+                            if node_mask_0 is not None and blend_tex is not None:
+                                node_mask_0.image = blend_tex.image
+
                         if id == 0x7fb4ec19 and tag == b'mtib':
                             print(f"Mask 1 Control map: {self.string_table.strings[idx]}")
-                            tex = Texture()
-                            tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", path.split("/")[-1]+".mask_1",import_settings)
-                            if node_mask_1 is not None and tex.blender_texture is not None:
-                                node_mask_1.image = tex.blender_texture.image
+                            name = self.string_table.strings[idx].replace('\\','/').split('/')[-1].split('.')[0].split('{')[0]
+                            if name in bpy.data.textures.keys() and import_settings.reuse_textures:
+                                blend_tex = bpy.data.textures[name]
+                            else:
+                                tex = Texture()
+                                tex.readTexture(root + "/__chore/pc__/" + self.string_table.strings[idx].replace("\\","/") + "{pc}.bitmap", name,import_settings)
+                                blend_tex = tex.blender_texture
+                            if node_mask_1 is not None and blend_tex is not None:
+                                node_mask_1.image = blend_tex.image
                             
                 
                 #print(f"Content Table: offset {hex(self.material_content_table.entries[x].data_reference.offset)} size {hex(self.material_content_table.entries[x].data_reference.size)} hash {self.material_content_table.entries[x].hash}")

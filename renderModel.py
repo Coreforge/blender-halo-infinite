@@ -143,10 +143,12 @@ class ImportSettings:
     lod = -1
     mipmap = -1
     norm_signed = True
+    reuse_textures = True
     def __init__(self):
         self.lod = -1
         self.mipmap = -1
         self.norm_signed = True
+        self.reuse_textures = True
 
 def readNullString(f, start):
     string = []
@@ -185,6 +187,12 @@ class ImportRenderModel(bpy.types.Operator):
     import_normals: bpy.props.BoolProperty(
         name="(potentialy broken) Import Normals",
         description="(potentially broken) import mesh normals",
+        default=True
+    )
+
+    reuse_textures: bpy.props.BoolProperty(
+        name="Reuse existing Textures",
+        description="use the existing texture if a referenced Texture with the same name already exists in the file",
         default=True
     )
     
@@ -636,6 +644,7 @@ class ImportRenderModel(bpy.types.Operator):
             import_settings.mipmap = self.mipmap
             import_settings.lod = self.lod
             import_settings.norm_signed = self.norm_signed
+            import_settings.reuse_textures = self.reuse_textures
 
             if self.populate_shader:
                 
