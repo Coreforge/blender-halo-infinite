@@ -206,24 +206,28 @@ class ImportRenderModel(bpy.types.Operator):
         default=True
     )
 
-    root_folder: bpy.props.StringProperty(
-        subtype="FILE_PATH",
-        name="Asset Root",
-        description="Path to use for additional data. Uses relative path from imported file if none is specified and import dependencies is active",
-        default="/home/ich/haloRIP/HIMU/output"
-    )
+    root_folder = None
+    shader_file = None
+    shader_name = None
 
-    shader_file: bpy.props.StringProperty(
-        name="Shader library",
-        description="Path to the blend file containing the shader",
-        default="/home/ich/haloRIP/blender_plugin/shaders/Infinite_MP_Shader_v1.8_Made_by_Grand_Bacon.blend"
-    )
-
-    shader_name: bpy.props.StringProperty(
-        name="Shader name",
-        description="Name of the shader within the library",
-        default="Infinite MP Shader v1.8 Made by Grand_Bacon"
-    )
+    #root_folder: bpy.props.StringProperty(
+    #    subtype="FILE_PATH",
+    #    name="Asset Root",
+    #    description="Path to use for additional data. Uses relative path from imported file if none is specified and import dependencies is active",
+    #    default="/home/ich/haloRIP/HIMU/output"
+    #)
+#
+    #shader_file: bpy.props.StringProperty(
+    #    name="Shader library",
+    #    description="Path to the blend file containing the shader",
+    #    default="/home/ich/haloRIP/blender_plugin/shaders/Infinite_MP_Shader_v1.8_Made_by_Grand_Bacon.blend"
+    #)
+#
+    #shader_name: bpy.props.StringProperty(
+    #    name="Shader name",
+    #    description="Name of the shader within the library",
+    #    default="Infinite MP Shader v1.8 Made by Grand_Bacon"
+    #)
 
     mipmap: bpy.props.IntProperty(
         name="Mipmap level",
@@ -234,7 +238,7 @@ class ImportRenderModel(bpy.types.Operator):
     norm_signed: bpy.props.BoolProperty(
         name="Signed Texture Range",
         description="import texures with a signed format as signed",
-        default=True
+        default=False
     )
 
     lod: bpy.props.IntProperty(
@@ -961,6 +965,12 @@ class ImportRenderModel(bpy.types.Operator):
 
             return
 
+
+        addon_prefs = context.preferences.addons[__package__].preferences
+
+        self.root_folder = addon_prefs.root_folder
+        self.shader_file = addon_prefs.shader_file
+        self.shader_name = addon_prefs.shader_name
 
         with open(self.filepath,'rb') as f:
             if f.read(4) != b'ucsh':

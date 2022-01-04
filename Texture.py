@@ -300,6 +300,111 @@ class Texture:
         return dds_data
         #write_file(dds_header, tex, full_save_path)
 
+    def readTextureData(self,data,width,height,import_settings, format):
+        if format == 0x54:
+            #with open("/home/ich/haloRIP/blender_plugin/normal.dds",'w+b') as normal:
+            #    normal.write(b''.join(dds_data))
+            #decoded_data = texture2ddecoder.decode_bc5(img_data,width,height)
+            decoded_data = [0,]*(width*height*4)
+            for x in range(len(data)//16):
+                block1 = int.from_bytes(data[x*16:(x*16)+4],'little')
+                block2 = int.from_bytes(data[(x*16)+4:(x*16)+8],'little')
+                block3 = int.from_bytes(data[(x*16)+8:(x*16)+12],'little')
+                block4 = int.from_bytes(data[(x*16)+12:(x*16)+16],'little')
+                decompressed_block = BC5.DecompressBC5_DualChannel_Internal([block1,block2,block3,block4])
+                blockX = x % (width//4)
+                blockY = x // (width//4)
+                #print(f"Block X {blockX} Block Y {blockY}")
+                if import_settings.norm_signed:
+                    for subY in range(4):
+                        for subX in range(4):
+                            decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4] = (decompressed_block[subY * 4 + subX][0])
+                            decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 1] = (decompressed_block[subY * 4 + subX][1])
+                            intermediate = (1 - ((decompressed_block[subY * 4 + subX][0]))**2 - ((decompressed_block[subY * 4 + subX][1]))**2)
+                            if intermediate < 0:
+                                r = 0#-1+math.sqrt(abs(intermediate))
+                            else:
+                                r = math.sqrt(intermediate)
+                            decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 2] = r#mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1]))).dot(
+                             #   mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1])))
+                            #)
+                            decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 3] = 1
+                else:
+                    for subY in range(4):
+                        for subX in range(4):
+                            decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4] = (decompressed_block[subY * 4 + subX][0]) / 2 + 0.5
+                            decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 1] = (decompressed_block[subY * 4 + subX][1]) / 2 + 0.5
+                            intermediate = (1 - ((decompressed_block[subY * 4 + subX][0]))**2 - ((decompressed_block[subY * 4 + subX][1]))**2)
+                            if intermediate < 0:
+                                r = 0#-1+math.sqrt(abs(intermediate))
+                            else:
+                                r = math.sqrt(intermediate)
+                            decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 2] = r#mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1]))).dot(
+                             #   mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1])))
+                            #)
+                            decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 3] = 1
+            #img_final = [0.0]*(len(decoded_data))
+            #for x in range(len(decoded_data)):
+            #    img_final[x] = decoded_data[x] / 255
+            #img_final = [snorm(x) for x in decoded_data]
+            #for x in range(len(img_final)//4):
+            #    img_final[(x*4)+3] = 1
+            #print(f"max: {max(img_final)} min: {min(img_final)}")
+            #img.pixels = decoded_data
+            return decoded_data
+
+        if format == 0x47:
+            import texture2ddecoder
+            decoded_data = texture2ddecoder.decode_bc1(data,width,height)
+            #img_final = [0.0]*(len(decoded_data))
+            #for x in range(len(decoded_data)):
+            #    img_final[x] = decoded_data[x] / 255
+            #img_final = [x/255 for x in decoded_data]
+            dat = [0.0,]*(width*height*4)
+            for x in range(width*height):
+                dat[x*4] = decoded_data[x*4+2] / 255
+                dat[x*4+1] = decoded_data[x*4+1] / 255
+                dat[x*4+2] = decoded_data[x*4] / 255
+                dat[x*4+3] = decoded_data[x*4+3] / 255
+            #img.pixels = dat
+            return dat
+
+        if format == 0x41:
+            # A8_UNORM
+            dat = [0.0,]*(width*height*4)
+            for x in range(len(data)):
+                dat[x*4] = 0.0
+                dat[x*4+1] = 0.0
+                dat[x*4+2] = 0.0
+                dat[x*4+3] = data[x]/255
+            return dat
+
+        if format == 0x57:
+            # B8G8R8A8_UNORM
+            dat = [0.0,]*(width*height*4)
+            for x in range(width*height):
+                dat[x*4] = data[x*4+2]/255
+                dat[x*4+1] = data[x*4+1]/255
+                dat[x*4+2] = data[x*4]/255
+                dat[x*4+3] = data[x*4+3]/255
+            return dat
+        #
+        #img_final = [0.0]*(width*height*4)
+        #src_pos = 0
+        #print(f"Source Data Size: {hex(len(img_data))} Pixels: {hex(width*height)}")
+        #for p in range(width*height-2):
+        #    if src_pos >= len(img_data)-2:
+        #        break
+        #    img_final[p*4] = img_data[src_pos] / 255
+        #    src_pos += 2
+        #    img_final[p*4+1] = img_data[src_pos] / 255
+        #    #src_pos += 
+        #    img_final[p*4+2] = 0
+        #    img_final[p*4+3] = 1
+        #img.pixels = img_final[0:width*height*4]
+        #tex.image = img
+        #self.blender_texture = tex
+
     def readTexture(self,path,name, import_settings):
         import texture2ddecoder
         import bpy
@@ -316,6 +421,8 @@ class Texture:
             handle_name = path.split('/')[-1]
             print(f"Texture File name: {handle_name}")
             format = -1
+            max_width = -1
+            max_height = -1
 
             for x in range(len(self.content_table.entries)):
                     content_entry = self.content_table.entries[x]
@@ -327,10 +434,19 @@ class Texture:
                     if content_entry.hash == b'*\x80\xeb\x8akA\n\xf6\x9cp\x0c\x97MU6#':
                         # DDS Header info stuff
                         offset = content_entry.data_reference.offset
+                        f.seek(offset + 0x14)
+                        embed_data_len = int.from_bytes(f.read(4),'little')
+                        embed_data_offset = offset + content_entry.data_reference.size
                         f.seek(offset + 0x1d)
                         format = int.from_bytes(f.read(2),'little')
                         f.seek(offset + 0x40)
                         resourceDimension = int.from_bytes(f.read(4),'little')
+
+                    if content_entry.hash == b'jQ\xb0\xde\x98D\x1c\x02\xcd\xc6A\x99i\xaa\x94\xc2':
+                        f.seek(content_entry.data_reference.offset)
+                        max_width = int.from_bytes(f.read(2),'little')
+                        max_height = int.from_bytes(f.read(2),'little')
+                        pass
 
                     if content_entry.hash == b'9, \xd1\xdcH\xfc\xbdI\xde+\x81\x93\xaf\xe8\xb0':
                         # One of these hashes per resource file
@@ -349,101 +465,37 @@ class Texture:
                             print(f"Width: {width} Height: {height} Format: {DXGI_FORMAT[format]} {hex(format)}")
                             tex = bpy.data.textures.new(name,type="IMAGE")
                             img = bpy.data.images.new(name,width,height)
+                            self.blender_texture = tex
                             with open(chunk_name, 'rb') as chunk_file:
                                 img_data = chunk_file.read()
 
-                                tex_obj = TextureObject()
-                                tex_obj.width = width
-                                tex_obj.height = height
-                                tex_obj.texture_format = format
+                                #tex_obj = TextureObject()
+                                #tex_obj.width = width
+                                #tex_obj.height = height
+                                #tex_obj.texture_format = format
+                                img.pixels = self.readTextureData(img_data,width,height,import_settings,format)
+                                tex.image = img
                                 #dds_data = self.createDDSHeader(tex_obj)
 #
                                 #if dds_data == None:
                                 #    print("Couldn't build DDS Header")
                                 #    continue
                                 #dds_data.append(img_data)
-                                
-                                if format == 0x54:
-                                    #with open("/home/ich/haloRIP/blender_plugin/normal.dds",'w+b') as normal:
-                                    #    normal.write(b''.join(dds_data))
-                                    #decoded_data = texture2ddecoder.decode_bc5(img_data,width,height)
-                                    decoded_data = [0,]*(width*height*4)
-                                    for x in range(len(img_data)//16):
-                                        block1 = int.from_bytes(img_data[x*16:(x*16)+4],'little')
-                                        block2 = int.from_bytes(img_data[(x*16)+4:(x*16)+8],'little')
-                                        block3 = int.from_bytes(img_data[(x*16)+8:(x*16)+12],'little')
-                                        block4 = int.from_bytes(img_data[(x*16)+12:(x*16)+16],'little')
-                                        decompressed_block = BC5.DecompressBC5_DualChannel_Internal([block1,block2,block3,block4])
-                                        blockX = x % (width//4)
-                                        blockY = x // (width//4)
-                                        #print(f"Block X {blockX} Block Y {blockY}")
-                                        if import_settings.norm_signed:
-                                            for subY in range(4):
-                                                for subX in range(4):
-                                                    decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4] = (decompressed_block[subY * 4 + subX][0])
-                                                    decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 1] = (decompressed_block[subY * 4 + subX][1])
-                                                    intermediate = (1 - ((decompressed_block[subY * 4 + subX][0]))**2 - ((decompressed_block[subY * 4 + subX][1]))**2)
-                                                    if intermediate < 0:
-                                                        r = 0#-1+math.sqrt(abs(intermediate))
-                                                    else:
-                                                        r = math.sqrt(intermediate)
-                                                    decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 2] = r#mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1]))).dot(
-                                                     #   mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1])))
-                                                    #)
-                                                    decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 3] = 1
-                                        else:
-                                            for subY in range(4):
-                                                for subX in range(4):
-                                                    decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4] = (decompressed_block[subY * 4 + subX][0]) / 2 + 0.5
-                                                    decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 1] = (decompressed_block[subY * 4 + subX][1]) / 2 + 0.5
-                                                    intermediate = (1 - ((decompressed_block[subY * 4 + subX][0]))**2 - ((decompressed_block[subY * 4 + subX][1]))**2)
-                                                    if intermediate < 0:
-                                                        r = 0#-1+math.sqrt(abs(intermediate))
-                                                    else:
-                                                        r = math.sqrt(intermediate)
-                                                    decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 2] = r#mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1]))).dot(
-                                                     #   mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1])))
-                                                    #)
-                                                    decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 3] = 1
-                                    #img_final = [0.0]*(len(decoded_data))
-                                    #for x in range(len(decoded_data)):
-                                    #    img_final[x] = decoded_data[x] / 255
-                                    #img_final = [snorm(x) for x in decoded_data]
-                                    #for x in range(len(img_final)//4):
-                                    #    img_final[(x*4)+3] = 1
-                                    #print(f"max: {max(img_final)} min: {min(img_final)}")
-                                    img.pixels = decoded_data
 
-                                if format == 0x47:
-                                    decoded_data = texture2ddecoder.decode_bc1(img_data,width,height)
-                                    #img_final = [0.0]*(len(decoded_data))
-                                    #for x in range(len(decoded_data)):
-                                    #    img_final[x] = decoded_data[x] / 255
-                                    #img_final = [x/255 for x in decoded_data]
-                                    
-                                    dat = [0.0,]*(width*height*4)
-                                    for x in range(width*height):
-                                        dat[x*4] = decoded_data[x*4+2] / 255
-                                        dat[x*4+1] = decoded_data[x*4+1] / 255
-                                        dat[x*4+2] = decoded_data[x*4] / 255
-                                        dat[x*4+3] = decoded_data[x*4+3] / 255
-                                    img.pixels = dat
-                                #
-                                #img_final = [0.0]*(width*height*4)
-                                #src_pos = 0
-                                #print(f"Source Data Size: {hex(len(img_data))} Pixels: {hex(width*height)}")
-                                #for p in range(width*height-2):
-                                #    if src_pos >= len(img_data)-2:
-                                #        break
-                                #    img_final[p*4] = img_data[src_pos] / 255
-                                #    src_pos += 2
-                                #    img_final[p*4+1] = img_data[src_pos] / 255
-                                #    #src_pos += 
-                                #    img_final[p*4+2] = 0
-                                #    img_final[p*4+3] = 1
-                                #img.pixels = img_final[0:width*height*4]
-                            tex.image = img
-                            self.blender_texture = tex
+            if embed_data_len != 0:
+                # if the length is not 0, that means that there is some bitmap data embedded in the main .bitmap file.
+                # This probably also means that there aren't any external chunk files, so the embedded data has to be read
+                # There don't seem to be mipmaps with these files, so that won't get checked
+                f.seek(embed_data_offset)
+                img_data = f.read(embed_data_len)
+                print(f"Bitmap with embedded data! Width: {max_width} Height: {max_height} Format: {DXGI_FORMAT[format]} {hex(format)}")
+                tex = bpy.data.textures.new(name,type="IMAGE")
+                img = bpy.data.images.new(name,max_width,max_height)
+                img.pixels = self.readTextureData(img_data,max_width,max_height,import_settings,format)
+                tex.image = img
+                self.blender_texture = tex
+            
+                                
 
     def exportTexture(self,path):
         with open(path,'rb') as f:
