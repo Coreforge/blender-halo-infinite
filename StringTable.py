@@ -15,7 +15,7 @@ class StringTable:
                 return "".join(string)
             string.append(char.decode("utf-8"))
 
-    def readStrings(self,f,header):
+    def readStrings(self,f,header,verbose=False):
         for x in range(header.string_count):
             offset = header.string_offset + x * 0x10
             f.seek(offset)
@@ -30,5 +30,5 @@ class StringTable:
             if string_index < header.string_count:
                 self.strings.append(string)
                 #print(f"Added String {string_index}: {string}")
-            else:
+            elif verbose:
                 print(f"String {string} has no valid index and will be ignored")
