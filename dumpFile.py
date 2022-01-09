@@ -21,10 +21,13 @@ def bytesFromByteString(string):
     res = []
     x = 0
     while x < len(string):
-        if string[x] == '\\':
+        if string[x] == '\\' and string[x+1] == 'x':
             x+=2    # skip the '\x'
             res.append(bytes.fromhex(string[x:x+2]))
             x += 2  # skip the two hex digits
+        elif string[x] == '\\' and string[x+1] == 'n':
+            res.append(b'\n')
+            x += 2
         else:
             res.append(bytes(string[x],'utf-8'))
             x += 1
