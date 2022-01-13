@@ -361,7 +361,7 @@ class ImportRenderModel(bpy.types.Operator):
                         #print(f"UV1: {u} {v}")
                     continue
 
-                if src_mesh.vertex_blocks[idx].vertex_type == 4:
+                if src_mesh.vertex_blocks[idx].vertex_type == 3:
                     #nVerts = (int)(src_mesh.vertex_blocks[x].size / src_mesh.vertex_blocks[x].vertex_stride)
                     current_vert = len(uv2)
                     uv2.extend([0.0,]*((block.size//block.vertex_stride)))
@@ -516,12 +516,12 @@ class ImportRenderModel(bpy.types.Operator):
                     except:
                         break
                 
-                #uv_layer = mesh.uv_layers.new(name="UV2")
-                #for loop in range(len(mesh.loops)):
-                #    try:
-                #        uv_layer.data[mesh.loops[loop].index].uv = (uv2[mesh.loops[loop].vertex_index][0],uv2[mesh.loops[loop].vertex_index][1])
-                #    except:
-                #        break
+                uv_layer = mesh.uv_layers.new(name="UV2")
+                for loop in range(len(mesh.loops)):
+                    try:
+                        uv_layer.data[mesh.loops[loop].index].uv = (uv2[mesh.loops[loop].vertex_index][0],uv2[mesh.loops[loop].vertex_index][1])
+                    except:
+                        break
 
             #print("UV done")
 
@@ -551,7 +551,7 @@ class ImportRenderModel(bpy.types.Operator):
                         mesh.materials.append(None)
                     material_slots[src_mesh.mesh_parts[p].material] = mesh.materials[-1]
                     material_slot_indicies[src_mesh.mesh_parts[p].material] = len(material_slot_indicies)
-                    print(f"Added material slot for material {src_mesh.mesh_parts[p].material.name}")
+                    #print(f"Added material slot for material {src_mesh.mesh_parts[p].material.name}")
                 for face in part_faces:
                     face.material_index = material_slot_indicies[src_mesh.mesh_parts[p].material]
                     pass
