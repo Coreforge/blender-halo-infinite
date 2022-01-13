@@ -353,7 +353,7 @@ class Texture:
             #img.pixels = decoded_data
             return decoded_data
 
-        if format == 0x47:
+        if format == 0x47 or format == 0x48:
             import texture2ddecoder
             decoded_data = texture2ddecoder.decode_bc1(data,width,height)
             #img_final = [0.0]*(len(decoded_data))
@@ -369,8 +369,8 @@ class Texture:
             #img.pixels = dat
             return dat
 
-        if format == 0x62:
-            # BC7_UNORM
+        if format == 0x62 or format == 0x63:
+            # BC7_UNORM or BC7_
             import texture2ddecoder
             decoded_data = texture2ddecoder.decode_bc7(data,width,height)
             dat = [0.0,]*(width*height*4)
