@@ -379,7 +379,7 @@ class ImportRenderModel(bpy.types.Operator):
 
                 if block.vertex_type == 5:
                     print(f"Normal stride: {hex(block.vertex_stride)}")
-                    current_vert = len(uv1)
+                    current_vert = len(normals)
                     normals.extend([0.0,]*((block.size//block.vertex_stride)))
                     for j in range(block.offset,block.offset + block.size,block.vertex_stride):
                         chunk_offset = j

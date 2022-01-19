@@ -401,6 +401,21 @@ class Texture:
                 dat[x*4+2] = data[x*4]/255
                 dat[x*4+3] = data[x*4+3]/255
             return dat
+
+        if format == 0x4d:
+            # BC3_UNORM
+            import texture2ddecoder
+            decoded_data = texture2ddecoder.decode_bc3(data,width,height)
+            dat = [0.0,]*(width*height*4)
+            for x in range(width*height):
+                dat[x*4] = decoded_data[x*4+2] / 255
+                dat[x*4+1] = decoded_data[x*4+1] / 255
+                dat[x*4+2] = decoded_data[x*4] / 255
+                dat[x*4+3] = decoded_data[x*4+3] / 255
+            return dat
+
+
+        print("Texture format currently unsupported")
         #
         #img_final = [0.0]*(width*height*4)
         #src_pos = 0
