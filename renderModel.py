@@ -20,6 +20,7 @@ else:
     from . StringTable import StringTable
     from . ContentTable import ContentTable, ContentTableEntry
     from . Material import Material
+    from . import ModulesManager
 
 
 
@@ -160,7 +161,7 @@ def readNullString(f, start):
         string.append(char.decode("utf-8"))
 
 class ImportRenderModel(bpy.types.Operator):
-    bl_idname = "import.rendermodel"
+    bl_idname = "infinite.rendermodel"
     bl_label = "Import rendermodel"
     bl_description = "rendermodel"
 
@@ -212,6 +213,12 @@ class ImportRenderModel(bpy.types.Operator):
         name="Import 3D Model",
         description="import the 3D model",
         default=True
+    )
+
+    use_modules: bpy.props.BoolProperty(
+        default=False,
+        name="use modules",
+        options={"HIDDEN"}
     )
 
     root_folder = None
@@ -453,7 +460,7 @@ class ImportRenderModel(bpy.types.Operator):
                         s = sum(these_weights)
                         #s = 128
                         if s != 0:
-                            norm_weights = [x/s for x in these_weights]
+                            norm_weights = [x/255 for x in these_weights]
                         else:
                             norm_weights = [0, 0, 0, 0]
                         weights[current_weight] = norm_weights
@@ -723,12 +730,17 @@ class ImportRenderModel(bpy.types.Operator):
 
                             if not materials[part.material_index].read_data and self.auto_import_dependencies:
                                 #print(f"Reading material {part.material_path}")
-                                materials[part.material_index].readMaterial(self.root_folder + "/" + part.material_path.replace("\\","/").replace("//","/") + ".material",
+                                if self.use_modules:
+                                    path = "/" + part.material_path.replace("\\","/").replace("//","/") + ".material"
+                                else:
+                                    path = self.root_folder + "/" + part.material_path.replace("\\","/").replace("//","/") + ".material"
+                                materials[part.material_index].readMaterial(path,
                                                                             self.root_folder,
                                                                             import_settings,
                                                                             add_material = self.populate_shader,
                                                                             material_name = materials[part.material_index].name,
-                                                                            material_prefab = shader_prefab)
+                                                                            material_prefab = shader_prefab,
+                                                                            use_modules = self.use_modules)
                             part.material = materials[part.material_index]
                         nVerts += part.vertex_count
                         nIdx += part.index_count
@@ -894,11 +906,14 @@ class ImportRenderModel(bpy.types.Operator):
             more_chunks = True
             chunk_data = b""
             nChunk = 0
+            manager = ModulesManager.ModulesManagerContainer.manager
             while more_chunks:
                 try:
                     chunk_path = f"{self.filepath}[{nChunk}_mesh_resource.chunk{nChunk}]"
                     #print(f"Trying to read chunk {chunk_path}")
-                    chunk_data += open(chunk_path,'rb').read()
+                    chunk = manager.getFileHandle(chunk_path,self.use_modules)
+                    chunk_data += chunk.read()#open(chunk_path,'rb').read()
+                    chunk.close()
                     nChunk += 1
                 except:
                     more_chunks = False
@@ -981,17 +996,24 @@ class ImportRenderModel(bpy.types.Operator):
         self.shader_file = addon_prefs.shader_file
         self.shader_name = addon_prefs.shader_name
 
-        with open(self.filepath,'rb') as f:
-            if f.read(4) != b'ucsh':
-                self.report({"ERROR"},"Wrong magic")
-                return {"CANCELLED"}
-            openRenderModel(f)
-
+        #with open(self.filepath,'rb') as f:
+        #    if f.read(4) != b'ucsh':
+        #        self.report({"ERROR"},"Wrong magic")
+        #        return {"CANCELLED"}
+        #    openRenderModel(f)
+        f = ModulesManager.ModulesManagerContainer.manager.getFileHandle(self.filepath,self.use_modules)
+        openRenderModel(f)
+        f.close()
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        context.window_manager.fileselect_add(self)
-        return {'RUNNING_MODAL'}
+        if not self.use_modules:
+            context.window_manager.fileselect_add(self)
+            return {'RUNNING_MODAL'}
+        else:
+            self.execute(context)
+            return {'FINISHED'}
+        
 
 def menu_func(self,context):
     self.layout.operator_context = 'INVOKE_DEFAULT'

@@ -33,12 +33,36 @@ class HaloInfiniteAddonPreferences(bpy.types.AddonPreferences):
         default="Infinite MP Shader v1.8 Made by Grand_Bacon"
     )
 
+    oodle_lib_path: bpy.props.StringProperty(
+        subtype="FILE_PATH",
+        name="Oodle Path",
+        description="Path to the oodle library, needed for module support",
+        default=""
+    )
+
+    module_deploy_path: bpy.props.StringProperty(
+        subtype="DIR_PATH",
+        name="Deploy Path",
+        description="Path of the deploy folder",
+        default=""
+    )
+
+    ####################################
+    # Global data
+    # Mostly used for module support
+    ####################################
+
+    modules_resources = []
+    modules_list_updated = False    # tells the panel to regenerate the tree view (doing so every draw would be stupid)
+
     def draw(self,context):
         layout = self.layout
         layout.label(text="Halo Infinite importer preferences")
         layout.prop(self,"root_folder")
         layout.prop(self,"shader_file")
         layout.prop(self,"shader_name")
+        layout.prop(self,"oodle_lib_path")
+        layout.prop(self,"module_deploy_path")
 
 
 if 'DEBUG_MODE' in sys.argv:
@@ -46,16 +70,19 @@ if 'DEBUG_MODE' in sys.argv:
 else:
     from . import renderModel
     from . import TextureOp
+    from . import ModulePanel
 
 def register():
     bpy.utils.register_class(HaloInfiniteAddonPreferences)
     TextureOp.register()
     renderModel.register()
+    ModulePanel.register()
  
 def unregister():
     bpy.utils.unregister_class(HaloInfiniteAddonPreferences)
     TextureOp.unregister()
     renderModel.unregister()
+    ModulePanel.unregister()
  
 if __name__ == "__main__":
     register()

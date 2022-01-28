@@ -23,6 +23,7 @@ else:
     from . StringTable import StringTable
     from . ContentTable import ContentTable, ContentTableEntry
     from . import BC5
+    from . import ModulesManager
 
 
 
@@ -435,158 +436,166 @@ class Texture:
 
 
     # return union of (width, height, data) with data being normalized RGBA
-    def readTextureImage(self,path, import_settings):
+    def readTextureImage(self,path, import_settings, use_modules):
         import texture2ddecoder
-        with open(path,'rb') as f:
-            local_fh = Header()
-            local_det = DataTable()
-            local_strt = StringTable()
-            local_ctt = ContentTable()
-            if not local_fh.checkMagic(f):
-                print(f"File has the wrong magic")
+        #with open(path,'rb') as f:
+        f = ModulesManager.ModulesManagerContainer.manager.getFileHandle(path,use_modules)
+        local_fh = Header()
+        local_det = DataTable()
+        local_strt = StringTable()
+        local_ctt = ContentTable()
+        if not local_fh.checkMagic(f):
+            print(f"File has the wrong magic")
 
-            local_fh.readHeader(f)
-            local_det.readTable(f,local_fh)
-            local_strt.readStrings(f,local_fh)
-            local_ctt.readTable(f,local_fh,local_det)
+        local_fh.readHeader(f)
+        local_det.readTable(f,local_fh)
+        local_strt.readStrings(f,local_fh)
+        local_ctt.readTable(f,local_fh,local_det)
 
-            handle_name = path.split('/')[-1]
-            print(f"Texture File name: {handle_name}")
-            format = -1
-            max_width = -1
-            max_height = -1
+        handle_name = path.split('/')[-1]
+        print(f"Texture File name: {handle_name}")
+        format = -1
+        max_width = -1
+        max_height = -1
 
-            for x in range(len(local_ctt.entries)):
-                    content_entry = local_ctt.entries[x]
+        for x in range(len(local_ctt.entries)):
+                content_entry = local_ctt.entries[x]
 
-                    if local_ctt.entries[x].data_reference is None:
-                        # Entry has no data linked
-                        continue
+                if local_ctt.entries[x].data_reference is None:
+                    # Entry has no data linked
+                    continue
                     
-                    if content_entry.hash == b'R\xab5#hBJ\xc2}\x8fr\x94#\x19m\xd3':
-                        # bitmap handle info stuff
-                        offset = content_entry.data_reference.offset
-                        f.seek(offset + 0xe4)
-                        frame_count = int.from_bytes(f.read(4),'little')
+                if content_entry.hash == b'R\xab5#hBJ\xc2}\x8fr\x94#\x19m\xd3':
+                    # bitmap handle info stuff
+                    offset = content_entry.data_reference.offset
+                    f.seek(offset + 0xe4)
+                    frame_count = int.from_bytes(f.read(4),'little')
 
-                    if content_entry.hash == b'*\x80\xeb\x8akA\n\xf6\x9cp\x0c\x97MU6#':
-                        # DDS Header info stuff
-                        offset = content_entry.data_reference.offset
-                        f.seek(offset + 0x14)
-                        embed_data_len = int.from_bytes(f.read(4),'little')
-                        embed_data_offset = offset + content_entry.data_reference.size
-                        f.seek(offset + 0x1d)
-                        format = int.from_bytes(f.read(2),'little')
-                        f.seek(offset + 0x40)
-                        resourceDimension = int.from_bytes(f.read(4),'little')
+                if content_entry.hash == b'*\x80\xeb\x8akA\n\xf6\x9cp\x0c\x97MU6#':
+                    # DDS Header info stuff
+                    offset = content_entry.data_reference.offset
+                    f.seek(offset + 0x14)
+                    embed_data_len = int.from_bytes(f.read(4),'little')
+                    embed_data_offset = offset + content_entry.data_reference.size
+                    f.seek(offset + 0x1d)
+                    format = int.from_bytes(f.read(2),'little')
+                    f.seek(offset + 0x40)
+                    resourceDimension = int.from_bytes(f.read(4),'little')
 
-                    if content_entry.hash == b'jQ\xb0\xde\x98D\x1c\x02\xcd\xc6A\x99i\xaa\x94\xc2':
-                        f.seek(content_entry.data_reference.offset)
-                        max_width = int.from_bytes(f.read(2),'little')
-                        max_height = int.from_bytes(f.read(2),'little')
-                        pass
+                if content_entry.hash == b'jQ\xb0\xde\x98D\x1c\x02\xcd\xc6A\x99i\xaa\x94\xc2':
+                    f.seek(content_entry.data_reference.offset)
+                    max_width = int.from_bytes(f.read(2),'little')
+                    max_height = int.from_bytes(f.read(2),'little')
+                    pass
 
-                    if content_entry.hash == b'9, \xd1\xdcH\xfc\xbdI\xde+\x81\x93\xaf\xe8\xb0':
-                        # One of these hashes per resource file
-                        nResourceFiles = content_entry.data_reference.size//0x10    # there are 0x10 bytes for each file
-                        for chunk in range(nResourceFiles):
-                            offset = content_entry.data_reference.offset + chunk * 0x10
-                            f.seek(offset + 0xa)
-                            mipmap = int.from_bytes(f.read(1),'little')
-                            if mipmap != import_settings.mipmap:
-                                continue
-                            f.seek(offset + 0xc)
-                            width = int.from_bytes(f.read(2),'little')
-                            height = int.from_bytes(f.read(2),'little')
-                            chunk_name = path + "[" + str(chunk) + "_bitmap_resource_handle.chunk" + str(chunk) + "]"
-                            print(f"Reading texture block {chunk_name}")
-                            print(f"Width: {width} Height: {height} Format: {DXGI_FORMAT[format]} {hex(format)}")
-                            with open(chunk_name, 'rb') as chunk_file:
-                                img_data = chunk_file.read()
+                if content_entry.hash == b'9, \xd1\xdcH\xfc\xbdI\xde+\x81\x93\xaf\xe8\xb0':
+                    # One of these hashes per resource file
+                    nResourceFiles = content_entry.data_reference.size//0x10    # there are 0x10 bytes for each file
+                    for chunk in range(nResourceFiles):
+                        offset = content_entry.data_reference.offset + chunk * 0x10
+                        f.seek(offset + 0xa)
+                        mipmap = int.from_bytes(f.read(1),'little')
+                        if mipmap != import_settings.mipmap:
+                            continue
+                        f.seek(offset + 0xc)
+                        width = int.from_bytes(f.read(2),'little')
+                        height = int.from_bytes(f.read(2),'little')
+                        chunk_name = path + "[" + str(chunk) + "_bitmap_resource_handle.chunk" + str(chunk) + "]"
+                        print(f"Reading texture block {chunk_name}")
+                        print(f"Width: {width} Height: {height} Format: {DXGI_FORMAT[format]} {hex(format)}")
+                        #with open(chunk_name, 'rb') as chunk_file:
 
-                                #tex_obj = TextureObject()
-                                #tex_obj.width = width
-                                #tex_obj.height = height
-                                #tex_obj.texture_format = format
-                                pixels = self.readTextureData(img_data,width,height,import_settings,format)
-                                #dds_data = self.createDDSHeader(tex_obj)
+                        chunk_file = ModulesManager.ModulesManagerContainer.manager.getFileHandle(chunk_name,use_modules)
+                        img_data = chunk_file.read()
+                        chunk_file.close()
+                        #tex_obj = TextureObject()
+                        #tex_obj.width = width
+                        #tex_obj.height = height
+                        #tex_obj.texture_format = format
+                        pixels = self.readTextureData(img_data,width,height,import_settings,format)
+                        #dds_data = self.createDDSHeader(tex_obj)
 #
-                                #if dds_data == None:
-                                #    print("Couldn't build DDS Header")
-                                #    continue
-                                #dds_data.append(img_data)
+                        #if dds_data == None:
+                        #    print("Couldn't build DDS Header")
+                        #    continue
+                        #dds_data.append(img_data)
 
-            if embed_data_len != 0:
-                # if the length is not 0, that means that there is some bitmap data embedded in the main .bitmap file.
-                # This probably also means that there aren't any external chunk files, so the embedded data has to be read
-                # There don't seem to be mipmaps with these files, so that won't get checked
-                f.seek(embed_data_offset)
-                img_data = f.read(embed_data_len)
-                print(f"Bitmap with embedded data! Width: {max_width} Height: {max_height} Format: {DXGI_FORMAT[format]} {hex(format)}")
+        if embed_data_len != 0:
+            # if the length is not 0, that means that there is some bitmap data embedded in the main .bitmap file.
+            # This probably also means that there aren't any external chunk files, so the embedded data has to be read
+            # There don't seem to be mipmaps with these files, so that won't get checked
+            f.seek(embed_data_offset)
+            img_data = f.read(embed_data_len)
+            print(f"Bitmap with embedded data! Width: {max_width} Height: {max_height} Format: {DXGI_FORMAT[format]} {hex(format)}")
 
-                pixels = self.readTextureData(img_data,max_width,max_height,import_settings,format)
+            pixels = self.readTextureData(img_data,max_width,max_height,import_settings,format)
+            width = max_width
+            height = max_height
 
-            return (width,height,pixels)
+        f.close()
+        return (width,height,pixels)
 
-    def readTexture(self,path,name, import_settings):
+    def readTexture(self,path,name, import_settings,use_modules):
         frame_count = -1
-        with open(path,'rb') as fh:
-            local_fh = Header()
-            if not local_fh.checkMagic(fh):
-                print(f"File has the wrong magic")
+        #with open(path,'rb') as fh:
+        fh = ModulesManager.ModulesManagerContainer.manager.getFileHandle(path,use_modules)
+        local_fh = Header()
+        if not local_fh.checkMagic(fh):
+            print(f"File has the wrong magic")
 
             
-            local_fh.readHeader(fh)
-            local_det = DataTable()
-            local_det.readTable(fh,local_fh)
-            local_strt = StringTable()
-            local_strt.readStrings(fh,local_fh)
-            local_ctt = ContentTable()
-            local_ctt.readTable(fh,local_fh,local_det)
+        local_fh.readHeader(fh)
+        local_det = DataTable()
+        local_det.readTable(fh,local_fh)
+        local_strt = StringTable()
+        local_strt.readStrings(fh,local_fh)
+        local_ctt = ContentTable()
+        local_ctt.readTable(fh,local_fh,local_det)
 
-            for x in range(len(local_ctt.entries)):
-                    content_entry = local_ctt.entries[x]
+        for x in range(len(local_ctt.entries)):
+                content_entry = local_ctt.entries[x]
 
-                    if content_entry.data_reference is None:
-                        # Entry has no data linked
-                        continue
+                if content_entry.data_reference is None:
+                    # Entry has no data linked
+                    continue
                     
-                    if content_entry.hash == b'R\xab5#hBJ\xc2}\x8fr\x94#\x19m\xd3':
-                        # bitmap handle info stuff
-                        offset = content_entry.data_reference.offset
-                        fh.seek(offset + 0xe4)
-                        frame_count = int.from_bytes(fh.read(4),'little')
-                        print(f"Texture has {frame_count} frames")
-            import bpy
-            if frame_count <= 1:
+                if content_entry.hash == b'R\xab5#hBJ\xc2}\x8fr\x94#\x19m\xd3':
+                    # bitmap handle info stuff
+                    offset = content_entry.data_reference.offset
+                    fh.seek(offset + 0xe4)
+                    frame_count = int.from_bytes(fh.read(4),'little')
+                    print(f"Texture has {frame_count} frames")
+        import bpy
+        if frame_count <= 1:
                 
-                print("Importing single frame Texture")
-                textureData = self.readTextureImage(path,import_settings)
-                tex = bpy.data.textures.new(name,type="IMAGE")
-                img = bpy.data.images.new(name,textureData[0],textureData[1])
+            print("Importing single frame Texture")
+            textureData = self.readTextureImage(path,import_settings,use_modules)
+            tex = bpy.data.textures.new(name,type="IMAGE")
+            img = bpy.data.images.new(name,textureData[0],textureData[1])
+            img.pixels = textureData[2]
+            tex.image = img
+            self.blender_texture = tex
+        else:
+            #from PIL import Image
+            frames = [] 
+            print("Importing multiple frames")
+            for frame in range(frame_count):
+                handle = path + f"[{frame}_bitmap_resource_handle]"
+                print(f"Using bitmap handle {handle} for frame {frame}")
+                textureData = self.readTextureImage(handle,import_settings,use_modules)
+                tex = bpy.data.textures.new(name + "_frame_" + str(frame),type="IMAGE")
+                img = bpy.data.images.new(name + "_frame_" + str(frame),textureData[0],textureData[1])
                 img.pixels = textureData[2]
                 tex.image = img
-                self.blender_texture = tex
-            else:
-                #from PIL import Image
-                frames = [] 
-                print("Importing multiple frames")
-                for frame in range(frame_count):
-                    handle = path + f"[{frame}_bitmap_resource_handle]"
-                    print(f"Using bitmap handle {handle} for frame {frame}")
-                    textureData = self.readTextureImage(handle,import_settings)
-                    tex = bpy.data.textures.new(name + "_frame_" + str(frame),type="IMAGE")
-                    img = bpy.data.images.new(name + "_frame_" + str(frame),textureData[0],textureData[1])
-                    img.pixels = textureData[2]
-                    tex.image = img
-                    #byte_data = [bytes(x) for x in textureData[2]]
-                    #print(byte_data)
-                    #try:
-                    #    frames.append(Image.frombytes('RGBA',(textureData[0],textureData[1]),b''.join(byte_data)))
-                    #except:
-                    #    print(f"Error on frame {frame}")
-                #final = BytesIO()
-                #frames[0].save("/home/ich/haloRIP/anim.gif",format="GIF",append_images=frames,save_all=True,duration=100,loop=0)
+                #byte_data = [bytes(x) for x in textureData[2]]
+                #print(byte_data)
+                #try:
+                #    frames.append(Image.frombytes('RGBA',(textureData[0],textureData[1]),b''.join(byte_data)))
+                #except:
+                #    print(f"Error on frame {frame}")
+            #final = BytesIO()
+            #frames[0].save("/home/ich/haloRIP/anim.gif",format="GIF",append_images=frames,save_all=True,duration=100,loop=0)
+        fh.close()
 
     def exportTexture(self,path):
         with open(path,'rb') as f:
