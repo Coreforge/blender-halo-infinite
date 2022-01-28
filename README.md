@@ -1,6 +1,7 @@
 # blender-halo-infinite
 
 This plugin is based on HIME by MontagueM (https://github.com/MontagueM/HaloInfiniteModelExtractor).
+Module support is based on HIMU by MontagueM (https://github.com/MontagueM/HaloInfiniteModuleUnpacker) and parts of Adjutant (https://github.com/Gravemind2401/Adjutant).
 
 To import models, make sure all related chunk files are in the same folder and import the .render_model file. 
 Importing Textures requires the module texture2ddecoder to be installed for blender.
