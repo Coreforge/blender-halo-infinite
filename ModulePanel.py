@@ -68,6 +68,29 @@ class ImporterSettings(bpy.types.PropertyGroup):
         default=True
     )
 
+    mipmap: bpy.props.IntProperty(
+        name="Mipmap level",
+        description="Mipmap level of the textures to import.",
+        default=0
+    )
+
+    norm_signed: bpy.props.BoolProperty(
+        name="Signed Texture Range",
+        description="import texures with a signed format as signed",
+        default=False
+    )
+
+    lod: bpy.props.IntProperty(
+        name="LOD",
+        description="The LOD of the meshes to import. Meshes with a different LOD get ignored",
+        default=0
+    )
+    
+    scale_modifier: bpy.props.FloatVectorProperty(
+        name="Scale Modifier",
+        description="Scale that gets applied to the model to get more reasonable scaling for blender",
+        default=[1.0,1.0,1.0])
+
 class loadModulesOperator(bpy.types.Operator):
     bl_idname = "infinite.loadmodules"
     bl_name = "load modules"
@@ -149,9 +172,18 @@ class TREE_UL_List(bpy.types.UIList):
                 op.add_materials = importer_settings.add_materials
                 op.populate_shader = importer_settings.populate_shader
                 op.import_model = importer_settings.import_model
+                op.lod = importer_settings.lod
+                op.mipmap = importer_settings.mipmap
+                op.norm_signed = importer_settings.norm_signed
+                op.scale_modifier = importer_settings.scale_modifier
 
             elif item.filename.split(".")[-1] == "bitmap":
-                layout.label(text=item.filename,icon="FILE_IMAGE")
+                #layout.label(text=item.filename,icon="FILE_IMAGE")
+                op = layout.operator("infinite.infinitetexture",icon="FILE_IMAGE",text=item.filename,emboss=False)
+                op.filepath = item.path
+                op.mipmap = importer_settings.mipmap
+                op.norm_signed = importer_settings.norm_signed
+                op.use_modules = True
 
             else:
                 layout.label(text=item.filename,icon="FILE_BLANK")
@@ -207,6 +239,44 @@ class ModulePanel(bpy.types.Panel):
         modelSettings.prop(bpy.context.scene.infinite_importer_settings,"add_materials")
         modelSettings.prop(bpy.context.scene.infinite_importer_settings,"populate_shader")
         modelSettings.prop(bpy.context.scene.infinite_importer_settings,"import_model")
+        modelSettings.prop(bpy.context.scene.infinite_importer_settings,"lod")
+        modelSettings.prop(bpy.context.scene.infinite_importer_settings,"scale_modifier")
+
+        textureSettings = self.layout.box()
+        textureSettings.label(text="Texture Settings")
+        textureSettings.prop(bpy.context.scene.infinite_importer_settings,"mipmap")
+        textureSettings.prop(bpy.context.scene.infinite_importer_settings,"norm_signed")
+
+        idx = bpy.context.scene.modules_list.index
+        if idx >= len(bpy.context.scene.modules_list.entries):
+            selectedPath = ""
+        else:
+            selectedPath = bpy.context.scene.modules_list.entries[bpy.context.scene.modules_list.index].path
+            importer_settings = bpy.context.scene.infinite_importer_settings
+            forceFormat = self.layout.box()
+            forceFormat.label(text="Import selected as")
+            rendermodelOp =  forceFormat.operator("infinite.rendermodel",icon="FILE_3D",text="Rendermodel")
+            rendermodelOp.filepath = selectedPath
+            rendermodelOp.use_modules = True
+            rendermodelOp.auto_import_dependencies = importer_settings.auto_import_dependencies
+            rendermodelOp.import_uvs = importer_settings.import_uvs
+            rendermodelOp.import_weights = importer_settings.import_weights
+            rendermodelOp.import_normals = importer_settings.import_normals
+            rendermodelOp.reuse_textures = importer_settings.reuse_textures
+            rendermodelOp.add_materials = importer_settings.add_materials
+            rendermodelOp.populate_shader = importer_settings.populate_shader
+            rendermodelOp.import_model = importer_settings.import_model
+            rendermodelOp.lod = importer_settings.lod
+            rendermodelOp.mipmap = importer_settings.mipmap
+            rendermodelOp.norm_signed = importer_settings.norm_signed
+            rendermodelOp.scale_modifier = importer_settings.scale_modifier
+
+            textureOp = forceFormat.operator("infinite.infinitetexture",icon="FILE_IMAGE",text="Bitmap")
+            textureOp.filepath = selectedPath
+            textureOp.mipmap = importer_settings.mipmap
+            textureOp.norm_signed = importer_settings.norm_signed
+            textureOp.use_modules = True
+
 
     @classmethod
     def poll(cls,context):

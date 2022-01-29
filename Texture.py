@@ -307,6 +307,16 @@ class Texture:
             #    normal.write(b''.join(dds_data))
             #decoded_data = texture2ddecoder.decode_bc5(img_data,width,height)
             decoded_data = [0,]*(width*height*4)
+            if width == 1 and height == 1:
+                import texture2ddecoder
+                decoded_data = texture2ddecoder.decode_bc5(data,width,height)
+                dat = [0.0,]*(width*height*4)
+                for x in range(width*height):
+                    dat[x*4] = decoded_data[x*4+2] / 255
+                    dat[x*4+1] = decoded_data[x*4+1] / 255
+                    dat[x*4+2] = decoded_data[x*4] / 255
+                    dat[x*4+3] = decoded_data[x*4+3] / 255
+                return dat
             for x in range(len(data)//16):
                 block1 = int.from_bytes(data[x*16:(x*16)+4],'little')
                 block2 = int.from_bytes(data[(x*16)+4:(x*16)+8],'little')
@@ -382,6 +392,17 @@ class Texture:
                 dat[x*4+3] = decoded_data[x*4+3] / 255
             return dat
 
+        if format == 0x50:
+            # BC4_UNORM
+            import texture2ddecoder
+            decoded_data = texture2ddecoder.decode_bc4(data,width,height)
+            dat = [0.0,]*(width*height*4)
+            for x in range(width*height):
+                dat[x*4] = decoded_data[x*4+2] / 255
+                dat[x*4+1] = decoded_data[x*4+1] / 255
+                dat[x*4+2] = decoded_data[x*4] / 255
+                dat[x*4+3] = decoded_data[x*4+3] / 255
+            return dat
 
         if format == 0x41:
             # A8_UNORM
@@ -403,8 +424,8 @@ class Texture:
                 dat[x*4+3] = data[x*4+3]/255
             return dat
 
-        if format == 0x4d:
-            # BC3_UNORM
+        if format == 0x4d or format == 0x4e:
+            # BC3_UNORM or BC3_UNORM_SRGB
             import texture2ddecoder
             decoded_data = texture2ddecoder.decode_bc3(data,width,height)
             dat = [0.0,]*(width*height*4)
@@ -506,19 +527,25 @@ class Texture:
                         #with open(chunk_name, 'rb') as chunk_file:
 
                         chunk_file = ModulesManager.ModulesManagerContainer.manager.getFileHandle(chunk_name,use_modules)
-                        img_data = chunk_file.read()
-                        chunk_file.close()
-                        #tex_obj = TextureObject()
-                        #tex_obj.width = width
-                        #tex_obj.height = height
-                        #tex_obj.texture_format = format
-                        pixels = self.readTextureData(img_data,width,height,import_settings,format)
-                        #dds_data = self.createDDSHeader(tex_obj)
-#
-                        #if dds_data == None:
-                        #    print("Couldn't build DDS Header")
-                        #    continue
-                        #dds_data.append(img_data)
+                        
+                        if chunk_file is not None:
+                            img_data = chunk_file.read()
+                            chunk_file.close()
+                            #tex_obj = TextureObject()
+                            #tex_obj.width = width
+                            #tex_obj.height = height
+                            #tex_obj.texture_format = format
+                            pixels = self.readTextureData(img_data,width,height,import_settings,format)
+                            #dds_data = self.createDDSHeader(tex_obj)
+#   
+                            #if dds_data == None:
+                            #    print("Couldn't build DDS Header")
+                            #    continue
+                            #dds_data.append(img_data)
+                        else:
+                            # the file doesn't exist
+                            pixels = None
+                            print("The Chunk doesn't exist")
 
         if embed_data_len != 0:
             # if the length is not 0, that means that there is some bitmap data embedded in the main .bitmap file.
@@ -572,7 +599,8 @@ class Texture:
             textureData = self.readTextureImage(path,import_settings,use_modules)
             tex = bpy.data.textures.new(name,type="IMAGE")
             img = bpy.data.images.new(name,textureData[0],textureData[1])
-            img.pixels = textureData[2]
+            if textureData[2] is not None:
+                img.pixels = textureData[2]
             tex.image = img
             self.blender_texture = tex
         else:

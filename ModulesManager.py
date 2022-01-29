@@ -204,7 +204,7 @@ class ModulesManager:
             currentData = []
             if offset > item.module.size:
                 print(f"Item {item.name} is located outside of the module")
-                return final
+                return 
 
             if item.decompressedSize == 0:
                 print(f"Item {item.name} is empty")

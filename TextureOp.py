@@ -17,11 +17,17 @@ class ImportSettings:
         self.norm_signed = True
 
 class ImportTextureOp(bpy.types.Operator):
-    bl_idname = "import.infinitetexture"
+    bl_idname = "infinite.infinitetexture"
     bl_label = "Import Halo Infinite Bitmap"
     bl_description = "import a halo infinite bitmap"
 
     filepath: bpy.props.StringProperty(subtype="FILE_PATH")
+
+    use_modules: bpy.props.BoolProperty(
+        default=False,
+        name="use modules",
+        options={"HIDDEN"}
+    )
 
     mipmap: bpy.props.IntProperty(
         name="Mipmap level",
@@ -41,13 +47,18 @@ class ImportTextureOp(bpy.types.Operator):
         settings.mipmap = self.mipmap
         settings.norm_signed = self.norm_signed
         tex = Texture()
-        tex.readTexture(self.filepath,name,settings)
+        tex.readTexture(self.filepath,name,settings, self.use_modules)
 
         return {'FINISHED'}
 
     def invoke(self,context,event):
-        context.window_manager.fileselect_add(self)
-        return {'RUNNING_MODAL'}
+        if not self.use_modules:
+            context.window_manager.fileselect_add(self)
+            return {'RUNNING_MODAL'}
+        else:
+            self.execute(context)
+            return {"FINISHED"}
+        
 
 def menu_func(self,context):
     self.layout.operator_context = 'INVOKE_DEFAULT'
