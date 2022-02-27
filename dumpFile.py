@@ -33,7 +33,38 @@ def bytesFromByteString(string):
             x += 1
     b = b''.join(res)
     return b
-        
+
+
+# look up if the hash is known already
+def lookupHash(hash):
+    if hash == b'R\xab5#hBJ\xc2}\x8fr\x94#\x19m\xd3':
+        return "Bitmap handle info"
+
+    if hash == b'*\x80\xeb\x8akA\n\xf6\x9cp\x0c\x97MU6#':
+        return "Bitmap info"
+
+    if hash == b'jQ\xb0\xde\x98D\x1c\x02\xcd\xc6A\x99i\xaa\x94\xc2':
+        return "Bitmap sizes"
+
+    if hash == b'9, \xd1\xdcH\xfc\xbdI\xde+\x81\x93\xaf\xe8\xb0':
+        return "Bitmap"
+
+    if hash == b"\xAC\xFD\x51\xFE\x78\x47\xFF\x62\x54\x30\xC3\xA8\x6C\xA9\x23\xA0":
+        return "Scale data"
+
+    if hash == b"\x9D\x84\x81\x4A\xB4\x42\xEE\xFB\xAC\x56\xC9\xA3\x18\x0F\x53\xE6":
+        return "Mesh data"
+
+    if hash == b'\x97\xc4\xfag}N=\x88\xa2\xf7\x94\xb7\xf8\x93\xff\x8d':
+        return "Mesh metadata"
+
+    if hash == b")s\xdd\x10\x80H\x7f\xe0\x9a\xb7\x8b\xbc\xee'2%":
+        return "Mesh data marker?"
+
+    if hash == b'/\x04A\x1b\xed@\x9asd\x15\xdd\xad\r\xd4[\x19':
+        return "Material Bitmap entry"
+
+    return "<unknown Hash>"
 
 if len(sys.argv) < 2:
     print("Usage: python3 dumpFile.py <options> <file>")
@@ -50,6 +81,8 @@ if len(sys.argv) < 2:
     print("\t-sv\t\tprint out strings with invalid indicies too")
     print("\t-fh <hash>\tonly show entries with the given hash (python byte literal, but without the b infront, eg. '\\xa8\\xda')")
     print("\t-dh <hash> <index>\tdump the data of a specific hash out to the console")
+    print("\t-nP\t\tdon't print hashes in the content table if they don't have referenced Data")
+    print("\t-lH\t\tcheck if the hash is already known")
     exit()
 
 export_external_data = False
@@ -64,6 +97,8 @@ strings_verbose = False
 filter_hash = b''
 dump_hash = b''
 dump_hash_idx = -1
+noParentOnly = False
+lookupHashs = False
 
 suppress_prints = False
 
@@ -98,6 +133,12 @@ for o in argv_iter:
             filter_hash = bytesFromByteString(next(argv_iter))
             print(f"using filter hash {filter_hash}")
             continue
+        if o == "-nP":
+            noParentOnly = True
+            continue
+        if o == '-lH':
+            lookupHashs = True
+            continue
         if o == '-dh':
             dump_hash = bytesFromByteString(next(argv_iter))
             dump_hash_idx = int(next(argv_iter))
@@ -125,6 +166,7 @@ with open(file_path,'rb') as f:
     string_table.readStrings(f,file_header,strings_verbose)
     content_table.readTable(f,file_header,data_entry_table)
     if not suppress_prints:
+        print(f"Data starts at offsset {hex(file_header.data_offset)}")
         print(f"File has {hex(file_header.data_offset - file_header.string_offset - file_header.string_length - file_header.some_field_length)} bytes of additional (external) data")
 
     if export_external_data:
@@ -172,14 +214,21 @@ with open(file_path,'rb') as f:
             hashes.append(hash)
         if print_content_table:
             if filter_hash == b'' or hash == filter_hash:
+                if entry.data_reference is None and noParentOnly:
+                    continue
                 print(f"\nContent Entry:")
                 print(f"\tHash: {hash}")
                 if entry.data_reference is not None:
                     print(f"\tReferenced Data:\n\t\tOffset: {hex(entry.data_reference.offset)}\n\t\tSize: {hex(entry.data_reference.size)}")
                 if entry.data_parent is not None:
                     print(f"\tParent Data:\n\t\tOffset: {hex(entry.data_parent.offset)}\n\t\tSize: {hex(entry.data_parent.size)}")
+                if lookupHashs:
+                    print(f"\tHash use: {lookupHash(hash)}")
 
     if count_hashes:
         print("Hash counts:")
         for hash in hash_counts.keys():
-            print(f"Hash {hash}: {hash_counts[hash]}")                    
+            if lookupHashs:
+                print(f"Hash {hash}: {hash_counts[hash]} {lookupHash(hash)}")
+            else:
+                print(f"Hash {hash}: {hash_counts[hash]}")
