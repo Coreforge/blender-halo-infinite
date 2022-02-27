@@ -343,17 +343,20 @@ class Texture:
                 else:
                     for subY in range(4):
                         for subX in range(4):
-                            decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4] = (decompressed_block[subY * 4 + subX][0]) / 2 + 0.5
-                            decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 1] = (decompressed_block[subY * 4 + subX][1]) / 2 + 0.5
-                            intermediate = (1 - ((decompressed_block[subY * 4 + subX][0]))**2 - ((decompressed_block[subY * 4 + subX][1]))**2)
-                            if intermediate < 0:
-                                r = 0#-1+math.sqrt(abs(intermediate))
-                            else:
-                                r = math.sqrt(intermediate)
-                            decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 2] = r#mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1]))).dot(
-                             #   mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1])))
-                            #)
-                            decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 3] = 1
+                            try:
+                                decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4] = (decompressed_block[subY * 4 + subX][0]) / 2 + 0.5
+                                decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 1] = (decompressed_block[subY * 4 + subX][1]) / 2 + 0.5
+                                intermediate = (1 - ((decompressed_block[subY * 4 + subX][0]))**2 - ((decompressed_block[subY * 4 + subX][1]))**2)
+                                if intermediate < 0:
+                                    r = 0#-1+math.sqrt(abs(intermediate))
+                                else:
+                                    r = math.sqrt(intermediate)
+                                decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 2] = r#mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1]))).dot(
+                                 #   mathutils.Vector(((decompressed_block[subY * 4 + subX][0]),(decompressed_block[subY * 4 + subX][1])))
+                                #)
+                                decoded_data[((((blockY * 4)+subY) * width) + (blockX * 4) + subX) * 4 + 3] = 1
+                            except:
+                                pass
             #img_final = [0.0]*(len(decoded_data))
             #for x in range(len(decoded_data)):
             #    img_final[x] = decoded_data[x] / 255
