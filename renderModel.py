@@ -742,6 +742,15 @@ class ImportRenderModel(bpy.types.Operator):
                                                                             material_prefab = shader_prefab,
                                                                             use_modules = self.use_modules)
                             part.material = materials[part.material_index]
+                        else:
+                            # there seems to be no path specified for this material, so just create an unknown material
+                            # this usually happens with runtime_geo files
+                            if len(materials)-1 < part.material_index:
+                                for additional_entries in range(part.material_index + 1 - len(materials)):
+                                    materials.append(Material())
+                            materials[part.material_index].name = f"unknown_material_{str(part.material_index)}"
+                            part.material = materials[part.material_index]
+                            
                         nVerts += part.vertex_count
                         nIdx += part.index_count
                         source_mesh.parts.append(part)
