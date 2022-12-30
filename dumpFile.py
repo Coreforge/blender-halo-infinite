@@ -64,6 +64,9 @@ def lookupHash(hash):
     if hash == b'/\x04A\x1b\xed@\x9asd\x15\xdd\xad\r\xd4[\x19':
         return "Material Bitmap entry"
 
+    if hash == b'\xe6\x06\xed\x1a\xb4F\xac\xf1\xd2\xf2*\x8aJ\xb5Q\xda':
+        return "RTGO Instance list"
+
     return "<unknown Hash>"
 
 if len(sys.argv) < 2:

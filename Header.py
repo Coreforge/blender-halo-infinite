@@ -1,8 +1,8 @@
 class Header:
     data_table_count = -1
     data_table_offset = -1
-    table_1_count = -1
-    table_1_offset = 0x50   # always starts directly after the header
+    tag_ref_table_count = -1
+    tag_ref_table_offset = 0x50   # always starts directly after the header
     content_table_count = -1
     content_table_offset = -1
     string_offset = -1
@@ -32,12 +32,12 @@ class Header:
 
         # Table 1 data (unknown purpose, but needed to calculate offsets)
         # entry size 0x18
-        self.table_1_offset = 0x50  # fixed, directly after the header
-        self.table_1_count = int.from_bytes(f.read(4),'little')     # 0x18
+        self.tag_ref_table_offset = 0x50  # fixed, directly after the header
+        self.tag_ref_table_count = int.from_bytes(f.read(4),'little')     # 0x18
 
         # Data Table (contains offsets and sizes of data blocks, referenced by content table)
         # size 0x10
-        self.data_table_offset = self.table_1_offset + self.table_1_count * 0x18    # 
+        self.data_table_offset = self.tag_ref_table_offset + self.tag_ref_table_count * 0x18    # 
         self.data_table_count = int.from_bytes(f.read(4),'little')     # 0x1c
 
         # Content Table (contains references to data table entries and a hash to identify the type of entry)
