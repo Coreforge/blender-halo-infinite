@@ -44,6 +44,8 @@ class BSPFile:
         pass
 
 
+    # essentially, iterate over the content table and if the 'hash' or rather GUID matches b'\xe6\x06\xed\x1a\xb4F\xac\xf1\xd2\xf2*\x8aJ\xb5Q\xda' and content_table_entry.data_reference is not None
+    # call this function and pass to it the file handle for the bsp, the total instance count and the Data Table entry (content_table_entry.data_reference)
     def readInstances(self,f,count : int, dte : DataTableEntry):
         instances = [RTGOInstance(),]*count
         for x in range(count):
@@ -58,6 +60,6 @@ class BSPFile:
             instance.rtgo_path = self.tag_ref_table.getRef(f.read(28))
             instance.foliage_material_palette = self.tag_ref_table.getRef(f.read(28))
             instances[x] = instance       
-                 
+
         return instances
         
