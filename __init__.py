@@ -71,18 +71,21 @@ else:
     from . import renderModel
     from . import TextureOp
     from . import ModulePanel
+    from . import bsp
 
 def register():
     bpy.utils.register_class(HaloInfiniteAddonPreferences)
     TextureOp.register()
     renderModel.register()
     ModulePanel.register()
+    bsp.register()
  
 def unregister():
     bpy.utils.unregister_class(HaloInfiniteAddonPreferences)
     TextureOp.unregister()
     renderModel.unregister()
     ModulePanel.unregister()
+    bsp.unregister()
  
 if __name__ == "__main__":
     register()

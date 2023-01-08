@@ -300,7 +300,11 @@ class ModulesManager:
 
     def getFileHandle(self,path,fromModule):
         if not fromModule:
-            return open(path,'rb')
+            # reading the whole file into memory should reduce the amount of syscalls due to seeking and only reading a few bytes at a time drastically
+            f = open(path,'rb')
+            bio = BytesIO(f.read())
+            f.close()
+            return bio
         else:
             print(f"getting file {path} from module")
             if path[0] == '/':
