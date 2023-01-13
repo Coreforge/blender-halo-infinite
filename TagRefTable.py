@@ -47,7 +47,7 @@ class TagRefTable:
             entry = TagRefTableEntry()
             f.seek(offset)
             entry.type = f.read(4)
-            entry.strOffset = f.read(4)
+            entry.strOffset = int.from_bytes(f.read(4),'little')
             entry.assetID = f.read(8)
             entry.globalID = f.read(4)
             entry.parent = f.read(4)

@@ -589,6 +589,9 @@ class renderModelImporter:
 
         for x in range(len(content_table.entries)):
 
+            # b'\xd9\xd0\x9c\xe6\xd0Fk\xabD\xa3\x05\xe4x0Q<' per mesh transforms (each 0x60 in size)
+            # b'#\x136G\x16M7\x1f\x02H\xc3\x97\xa4\xff\xa9\xc3' per mesh LOD distances
+
             # Scale data Block
             if content_table.entries[x].hash == b"\xAC\xFD\x51\xFE\x78\x47\xFF\x62\x54\x30\xC3\xA8\x6C\xA9\x23\xA0":
                 #print(f"Scale at {hex(content_table.entries[x].data_reference.offset)} size {hex(content_table.entries[x].data_reference.size)}")

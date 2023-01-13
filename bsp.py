@@ -88,6 +88,7 @@ class rtgo_instance:
         self.Pos_Vec = []
         self.MaterialCount = 0
         self.MaterialsList = [] #holds list of Material classes
+        self.mesh_index = -1
 
 class rtgo_file:
     def __init__(self):
@@ -100,6 +101,20 @@ class rtgo_file:
         self.AssetID = 0
         self.InstanceCount = 0
         self.Rtgo_Instances = [] #holds list of rtgo_instances classes
+
+#per rtgo base transform data
+class rtgo_transform_data:
+    def __init__(self):
+        self.rtgo_scale_vec = []
+        self.rtgo_forward_vec = []
+        self.rtgo_left_vec = []
+        self.rtgo_up_vec = []
+        self.rtgo_pos_vec = []
+        
+class rtgo_transform_list:
+    def __init__(self):
+        self.mesh_index_count = 0
+        self.mesh_index_transform_list = []
 
 class ImportBSP(bpy.types.Operator):
     bl_idname = "infinite.bsp"
@@ -137,6 +152,7 @@ class ImportBSP(bpy.types.Operator):
         RuntimeGeoDirArray = []
         DirString = []
         InstanceTransformList = []
+        InstanceIndexNum = 0
 
         INST_TRANSFORM_ZEROS = 0
 
@@ -201,6 +217,113 @@ class ImportBSP(bpy.types.Operator):
         
         print("File Directory Loaded")
 
+        #Loop through all RTGO dir and read each one
+            #store a list of all transform data for each mesh index
+                #Count of LODs for each model and how many transforms exist per model is count of "\x00\x00\x80\xBF"
+        
+        rtgo_data = []
+        
+        #Base RTGO Transform Data Builder
+        for rtgo_base in range(RTGOcount):
+            #clear old data
+            #print("Base Transform Data " + str(rtgo_base + 1) + "/" + str(RTGOcount))
+            rtgof_base_list = rtgo_transform_list()
+            
+            rtgof_base_list.mesh_index_count = 0
+            rtgof_base_list.mesh_index_transform_list = []
+            
+            Dir = []
+            mesh_count = 0
+            
+            #get the directory of each runtime_geo file and read each one
+            Dir = self.root_folder + "/" + RuntimeGeoDirArray[rtgo_base] + "{rt}.runtime_geo"
+            rtgofile = open(Dir, "rb")
+            file_rtgo = rtgofile.read()
+            
+            #count number of -1 floats there are which indocates how many meshes there are
+            rtgofile.seek(0x0)    
+            mesh_count = rtgofile.read().count(b'\x00\x00\x80\xBF')    
+            
+            #get the offset of the start of the transform data
+            try :
+                RTGO_Transform_Data_Offset = file_rtgo.index(b'\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\x01\x00\x00\x00\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\x00\x00\x00\x00\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\x00\x00\x00\x00\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\x00\x00\x00\x00\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\x00\x00\x00\x00\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\x00\x00\x00\x00\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\x00\x00\x00\x00\xBC\xBC\xBC\xBC\x00\x00\x00\x00\x00\x00\x00\x00\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC\xBC') + 0xB8
+            except RTGO_TRANSFORM_DATA_OFFSET_ERROR:
+                print("rtgo transform data offset not found")           
+            
+            #for every mesh count save the base transform data
+            for count in range(mesh_count):
+                rtgofile.seek(RTGO_Transform_Data_Offset)
+                
+                #clears old data
+                rtgoF_base = rtgo_transform_data()
+                
+                rtgoF_base.rtgo_scale_vec = []
+                rtgoF_base.rtgo_forward_vec = []
+                rtgoF_base.rtgo_left_vec = []
+                rtgoF_base.rtgo_up_vec = []
+                rtgoF_base.rtgo_pos_vec = []
+        
+                rtgofile.seek(rtgofile.tell() + 0x4) #skip mmr3hash data
+                rtgofile.seek(rtgofile.tell() + 0x4) #skip over mesh index and light mapping policy
+                
+                #Read data from offset and store it
+                #set the data for each index 
+                rtgoF_base.rtgo_scale_vec.append(struct.unpack('f', rtgofile.read(4))[0])
+                rtgoF_base.rtgo_scale_vec.append(struct.unpack('f', rtgofile.read(4))[0])
+                rtgoF_base.rtgo_scale_vec.append(struct.unpack('f', rtgofile.read(4))[0])
+                #print("Instance Scale: (" + str(rtgoF.Rtgo_Instances[inst2].Scale_Vec[0]) + ", " + str(rtgoF.Rtgo_Instances[inst2].Scale_Vec[1]) + ", " + str(rtgoF.Rtgo_Instances[inst2].Scale_Vec[2]) + ")")
+                    
+                rtgoF_base.rtgo_forward_vec.append(struct.unpack('f', rtgofile.read(4))[0])
+                rtgoF_base.rtgo_forward_vec.append(struct.unpack('f', rtgofile.read(4))[0])
+                rtgoF_base.rtgo_forward_vec.append(struct.unpack('f', rtgofile.read(4))[0])
+                #print("Instance Forward: (" + str(rtgoF.Rtgo_Instances[inst2].Forward_Vec[0]) + ", " + str(rtgoF.Rtgo_Instances[inst2].Forward_Vec[1]) + ", " + str(rtgoF.Rtgo_Instances[inst2].Forward_Vec[2]) + ")")
+                    
+                rtgoF_base.rtgo_left_vec.append(struct.unpack('f', rtgofile.read(4))[0])
+                rtgoF_base.rtgo_left_vec.append(struct.unpack('f', rtgofile.read(4))[0])
+                rtgoF_base.rtgo_left_vec.append(struct.unpack('f', rtgofile.read(4))[0])
+                #print("Instance Left: (" + str(rtgoF.Rtgo_Instances[inst2].Left_Vec[0]) + ", " + str(rtgoF.Rtgo_Instances[inst2].Left_Vec[1]) + ", " + str(rtgoF.Rtgo_Instances[inst2].Left_Vec[2]) + ")")
+                    
+                rtgoF_base.rtgo_up_vec.append(struct.unpack('f', rtgofile.read(4))[0])
+                rtgoF_base.rtgo_up_vec.append(struct.unpack('f', rtgofile.read(4))[0])
+                rtgoF_base.rtgo_up_vec.append(struct.unpack('f', rtgofile.read(4))[0])
+                #print("Instance Up: (" + str(rtgoF.Rtgo_Instances[inst2].Up_Vec[0]) + ", " + str(rtgoF.Rtgo_Instances[inst2].Up_Vec[1]) + ", " + str(rtgoF.Rtgo_Instances[inst2].Up_Vec[2]) + ")")
+                    
+                rtgoF_base.rtgo_pos_vec.append((struct.unpack('f', rtgofile.read(4))[0]))
+                rtgoF_base.rtgo_pos_vec.append((struct.unpack('f', rtgofile.read(4))[0]))
+                rtgoF_base.rtgo_pos_vec.append((struct.unpack('f', rtgofile.read(4))[0]))
+                
+                #skips unnecessary data
+                rtgofile.seek(rtgofile.tell() + 0xC) #bounds min
+                rtgofile.seek(rtgofile.tell() + 0xC) #bounds max 
+                rtgofile.seek(rtgofile.tell() + 0xC) #bounds center
+                
+                rtgofile.seek(rtgofile.tell() + 0x4) #bounding radius
+                
+                rtgofile.seek(rtgofile.tell() + 0x4) #buffers
+                rtgofile.seek(rtgofile.tell() + 0x4)
+                rtgofile.seek(rtgofile.tell() + 0x4)
+                rtgofile.seek(rtgofile.tell() + 0x4)
+                
+                rtgofile.seek(rtgofile.tell() + 0x4) #material count maybe
+                
+                rtgofile.seek(rtgofile.tell() + 0x4) # LOD renderdistance
+                
+                rtgofile.seek(rtgofile.tell() + 0x4) #Buffer
+                
+                rtgofile.seek(rtgofile.tell() + 0x8) #checksum
+                    
+                RTGO_Transform_Data_Offset = rtgofile.tell() #save location in memory
+                
+                #append the base mesh to the base mesh transform list
+                rtgof_base_list.mesh_index_transform_list.append(rtgoF_base)
+            
+            #close the runtime geo file once all mesh transform data is saved
+            rtgofile.close()
+            
+            #append the data to the list    
+            rtgo_data.append(rtgof_base_list)
+        print("RuntimeGeo Base Transform Data Loaded")
+
         #INSTANCE TRANSFORM DATA INDEX BUILDER
         for index in range(INST_TRANSFORM_COUNT - INST_TRANSFORM_ZEROS): #loops through total number of instance transforms                                             HARD CODED (Must be manually counted)
             s.seek(RuntimeGeoInstTransform_Offset) #seek to current listed location in memory
@@ -246,7 +369,8 @@ class ImportBSP(bpy.types.Operator):
                 
                 
             s.seek(s.tell() + 0xC + 0x8 + 0x24)
-            s.seek(s.tell() + 0x8) #skips RuntimeGeoMeshIndex, Unique IO Index, and flags etc
+            rtgoT.mesh_index = int.from_bytes(s.read(2),'little')
+            s.seek(s.tell() + 0x6) #skips RuntimeGeoMeshIndex, Unique IO Index, and flags etc
             s.seek(s.tell() + 0x18) #skips Bounds XYZ Min/Max
             s.seek(s.tell() + 0x10) #skips World Bound Sphere Center XYZ and radius
             s.seek(s.tell() + 0x5C) #skips bunch of stuff that is likely not needed
@@ -356,6 +480,8 @@ class ImportBSP(bpy.types.Operator):
                 rtgoF.Rtgo_Instances[inst2].Left_Vec = InstanceTransformList[instance_transform_index].Left_Vec
                 rtgoF.Rtgo_Instances[inst2].Up_Vec = InstanceTransformList[instance_transform_index].Up_Vec
                 rtgoF.Rtgo_Instances[inst2].Pos_Vec = InstanceTransformList[instance_transform_index].Pos_Vec
+
+                rtgoF.Rtgo_Instances[inst2].mesh_index = InstanceTransformList[instance_transform_index].mesh_index
                 
                 #print("Instance Pos: (" + str(rtgoF.Rtgo_Instances[inst2].Pos_Vec[0]) + ", " + str(rtgoF.Rtgo_Instances[inst2].Pos_Vec[1]) + ", " + str(rtgoF.Rtgo_Instances[inst2].Pos_Vec[2]) + ")")
                 
@@ -452,20 +578,37 @@ class ImportBSP(bpy.types.Operator):
  
  
             for k in range(files[i].InstanceCount):
+                InstanceIndexNum += 1
                 #profiling
                 #print("Instance Index: " + str(files[i].Rtgo_Instances[k].Instance_Index))
                 inst_start = perf_counter()
                 #print("i: " + str(i) + "k: " + str(k))
+
+                #Create Base Positon Offsets              MIGHT NEED TWEAKED and a for loop added
+                Base_Pos_Vectors = rtgo_data[i].mesh_index_transform_list[0].rtgo_pos_vec
                 
                 #Create Position Offsets
                 Pos_Vectors = files[i].Rtgo_Instances[k].Pos_Vec
+
+                #Create Base Transform Matrix
+                Base_Scale_Vectors = rtgo_data[i].mesh_index_transform_list[0].rtgo_scale_vec
+                Base_Forward_Vectors = rtgo_data[i].mesh_index_transform_list[0].rtgo_forward_vec
+                Base_Left_Vectors = rtgo_data[i].mesh_index_transform_list[0].rtgo_left_vec
+                Base_Up_Vectors = rtgo_data[i].mesh_index_transform_list[0].rtgo_up_vec
+                Base_Right_Vectors = []
                 
                 #Create Transform Matrix
                 Scale_Vectors = files[i].Rtgo_Instances[k].Scale_Vec
                 Forward_Vectors = files[i].Rtgo_Instances[k].Forward_Vec
                 Left_Vectors = files[i].Rtgo_Instances[k].Left_Vec
                 Up_Vectors = files[i].Rtgo_Instances[k].Up_Vec
+                mesh_index = files[i].Rtgo_Instances[k].mesh_index
                 Right_Vectors = []
+
+                #Create Base Right Vectors from Left Vector
+                Base_Right_Vectors.append(-1 * (Base_Left_Vectors[0]))
+                Base_Right_Vectors.append(-1 * (Base_Left_Vectors[1]))
+                Base_Right_Vectors.append(-1 * (Base_Left_Vectors[2]))
                 
                 #Create Right Vector from left Vector
                 Right_Vectors.append(-1 * (Left_Vectors[0]))
@@ -493,11 +636,20 @@ class ImportBSP(bpy.types.Operator):
                 # print("Up Vector:")
                 # print(Up_Vectors)
                 # print("")
+
+                BasePosVectorX = []
+                BasePosVectorY = []
+                BasePosVectorZ = []
                 
                 PosVectorX = []
                 PosVectorY = []
                 PosVectorZ = []
                 PosVecList = []
+
+                BaseScaleVectorX = []
+                BaseScaleVectorY = []
+                BaseScaleVectorZ = []
+                BaseScaleVecList = []
         
                 ScaleVectorX = []
                 ScaleVectorY = []
@@ -509,7 +661,21 @@ class ImportBSP(bpy.types.Operator):
                 #0y0
                 #00z
                 #this will be fed into the ScaleMatrix
+
+                #build base scale vectors
+                BaseScaleVectorX.append(Base_Scale_Vectors[0])
+                BaseScaleVectorX.append(0.00)
+                BaseScaleVectorX.append(0.00)
                 
+                BaseScaleVectorY.append(0.00)
+                BaseScaleVectorY.append(Base_Scale_Vectors[1])
+                BaseScaleVectorY.append(0.00)
+                
+                BaseScaleVectorX.append(0.00)
+                BaseScaleVectorX.append(0.00)
+                BaseScaleVectorX.append(Base_Scale_Vectors[2])
+                
+                #build scale vectors
                 ScaleVectorX.append(Scale_Vectors[0])
                 ScaleVectorX.append(0.000)
                 ScaleVectorX.append(0.00)
@@ -522,9 +688,21 @@ class ImportBSP(bpy.types.Operator):
                 ScaleVectorZ.append(0.00)
                 ScaleVectorZ.append(Scale_Vectors[2])
                 
+                #build base scale vector list
+                BaseScaleVecList.append(BaseScaleVectorX)
+                BaseScaleVecList.append(BaseScaleVectorY)
+                BaseScaleVecList.append(BaseScaleVectorZ)
+                
+                #build scale vector list
                 ScaleVecList.append(ScaleVectorX)
                 ScaleVecList.append(ScaleVectorY)
                 ScaleVecList.append(ScaleVectorZ)
+
+                #build base vector list that is fed into Transform matrix
+                BaseVectors = []
+                BaseVectors.append(Base_Forward_Vectors)
+                BaseVectors.append(Base_Left_Vectors)
+                BaseVectors.append(Base_Up_Vectors)   
                 
                 #build the Vector list that is fed into the Transform Matrix
                 Vectors = []
@@ -539,6 +717,8 @@ class ImportBSP(bpy.types.Operator):
                 #print(Vectors)
                 #NOTES
                 #Left = Up x Forward
+                base_matrix = Matrix(BaseVectors)
+
                 matrix = Matrix(Vectors)
                 ScaleMatrix = Matrix(ScaleVecList)
                 
@@ -610,15 +790,27 @@ class ImportBSP(bpy.types.Operator):
                         #bsp_collection.objects.link(inst_child_obj)
                 else:
                     inst_obj = rtgo_obj
-                
+                inst_obj["mesh_index"] = mesh_index
                 #transforms for the runtime_geo objects
                 inst_obj.location = (Pos_Vectors[0],Pos_Vectors[1],Pos_Vectors[2])
                 inst_obj.scale = (Scale_Vectors[0],Scale_Vectors[1],Scale_Vectors[2])
+
+                BaseEuler = base_matrix.to_euler('XYZ')
+                BaseEuler.z *= -1
                 
                 #tries to fix Z axis issue
                 Euler = matrix.to_euler('XYZ')
                 Euler.z = Euler.z * -1
-                inst_obj.rotation_euler = Euler
+                Euler.y *= -1
+                Euler.x *= -1
+
+                Euler.x += BaseEuler.x
+                Euler.y += BaseEuler.y
+                Euler.z += BaseEuler.z
+                #inst_obj.rotation_euler = Euler
+
+                inst_obj.rotation_mode = "QUATERNION"
+                inst_obj.rotation_quaternion = matrix.to_quaternion()
                 #inst_obj.rotation_euler = matrix.to_euler('XYZ')
 
 
